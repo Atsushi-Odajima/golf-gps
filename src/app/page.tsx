@@ -17,6 +17,11 @@ import {
   saveCourse,
   StorageStatus,
 } from "@/lib/storage";
+import {
+  fetchImportedCourse,
+  ImportProgress,
+  saveImportedCourse,
+} from "@/lib/importCourse";
 
 export default function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -24,6 +29,7 @@ export default function HomePage() {
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
   const [storage, setStorage] = useState<StorageStatus | null>(null);
   const [showStorage, setShowStorage] = useState(false);
+  const [importing, setImporting] = useState<ImportProgress | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = async () => {
@@ -69,6 +75,33 @@ export default function HomePage() {
     if (!confirm("このコースを削除しますか？")) return;
     await deleteCourse(id);
     await refresh();
+  };
+
+  const handleImportUrl = async () => {
+    const url = prompt(
+      "ゴルフ場のコースレイアウトページURLを貼り付けてください\n例: https://reserve.accordiagolf.com/golfCourse/saitama/tamagawa/layout",
+    );
+    if (!url) return;
+    setImporting({ total: 0, completed: 0, failures: [] });
+    try {
+      const imported = await fetchImportedCourse(url.trim());
+      if (!imported.holes.length) throw new Error("ホール情報が抽出できませんでした");
+      const confirmMsg =
+        `「${imported.name}」を ${imported.holes.length} ホール分インポートします。\n` +
+        `画像のあるホール: ${imported.holes.filter((h) => h.imageUrl).length}\n` +
+        `続行しますか？`;
+      if (!confirm(confirmMsg)) {
+        setImporting(null);
+        return;
+      }
+      await saveImportedCourse(imported, (p) => setImporting(p));
+      await refresh();
+      setImporting(null);
+      alert(`インポート完了: ${imported.name}`);
+    } catch (e) {
+      setImporting(null);
+      alert("インポート失敗: " + (e instanceof Error ? e.message : String(e)));
+    }
   };
 
   const handleExport = async () => {
@@ -118,10 +151,69 @@ export default function HomePage() {
     <>
       <div className="appbar">
         <h1>コース一覧</h1>
+        <button className="btn" onClick={handleImportUrl} title="URLからインポート">
+          🔗URL
+        </button>
         <button className="btn primary" onClick={handleAdd}>
-          ＋コース
+          ＋
         </button>
       </div>
+
+      {importing && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: 360, width: "100%", textAlign: "center" }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
+            <div style={{ fontWeight: 700 }}>インポート中</div>
+            <div className="muted" style={{ marginTop: 8 }}>
+              {importing.current ?? "解析中…"}
+            </div>
+            {importing.total > 0 && (
+              <>
+                <div
+                  style={{
+                    marginTop: 12,
+                    height: 8,
+                    background: "var(--panel-2)",
+                    borderRadius: 4,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${(importing.completed / importing.total) * 100}%`,
+                      background: "var(--accent)",
+                      transition: "width 0.2s",
+                    }}
+                  />
+                </div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                  {importing.completed} / {importing.total} ホール
+                </div>
+              </>
+            )}
+            {importing.failures.length > 0 && (
+              <div className="muted" style={{ fontSize: 11, marginTop: 8, color: "var(--accent-2)" }}>
+                取得失敗: {importing.failures.length}件
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="page">
         {hasActive && activeCourseId && (
