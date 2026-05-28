@@ -23,8 +23,9 @@ body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN",
-    "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  font-family: "Meiryo", メイリオ, "Hiragino Sans", "ヒラギノ角ゴシック",
+    "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Noto Sans JP",
+    -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 16px;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;

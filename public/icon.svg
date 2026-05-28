@@ -14,11 +14,11 @@
   <!-- ===== Silhouette group (man holding a driver club, all same dark color) ===== -->
   <g fill="#0a1a12" stroke="#0a1a12" opacity="0.92">
 
-    <!-- Driver shaft: horizontal, drawn FIRST so the head silhouette will cover its middle portion -->
+    <!-- Driver shaft -->
     <line x1="372" y1="180" x2="110" y2="190"
           stroke-width="14" stroke-linecap="round"/>
 
-    <!-- Driver clubhead (silhouette: large bulb with rounded heel) -->
+    <!-- Driver clubhead -->
     <g transform="translate(85 195) rotate(-8)">
       <ellipse cx="0" cy="0" rx="64" ry="42"/>
       <circle cx="-42" cy="6" r="24"/>
@@ -46,7 +46,7 @@
              L 175 258
              C 158 258, 148 246, 150 232 Z" stroke="none"/>
 
-    <!-- Right arm raised, gripping the shaft -->
+    <!-- Right arm raised -->
     <line x1="378" y1="335" x2="438" y2="252"
           stroke-width="46" stroke-linecap="round"/>
     <line x1="438" y1="252" x2="378" y2="180"
@@ -55,27 +55,27 @@
 
   </g>
 
-  <!-- "へらけん" small white label inside the driver clubhead silhouette -->
+  <!-- "へらけん" label inside clubhead -->
   <g transform="translate(82 196) rotate(-8)">
     <text x="0" y="6"
-          font-family="WenQuanYi Zen Hei, Unifont-JP, sans-serif"
+          font-family="Meiryo, メイリオ, 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Noto Sans JP', IPAPGothic, IPAGothic, 'WenQuanYi Zen Hei', sans-serif"
           font-size="22" font-weight="700"
           fill="#ffffff" text-anchor="middle"
           letter-spacing="-0.5">へらけん</text>
   </g>
 
-  <!-- ===== Single-line app name: 壁の距離計 + compass ===== -->
-  <g font-family="WenQuanYi Zen Hei, Unifont-JP, sans-serif" font-weight="900" fill="#ffffff" text-anchor="middle">
-    <text x="190" y="458" font-size="64" letter-spacing="-1">壁の距離計</text>
+  <!-- ===== Single-line app name: 壁の距離計 + compass (raised, tight spacing) ===== -->
+  <g font-family="Meiryo, メイリオ, 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Noto Sans JP', IPAPGothic, IPAGothic, 'WenQuanYi Zen Hei', sans-serif" font-weight="900" fill="#ffffff" text-anchor="middle">
+    <text x="210" y="395" font-size="60" letter-spacing="-1">壁の距離計</text>
   </g>
 
-  <!-- Compass icon (= 🧭) placed to the right of the text, same baseline -->
-  <g transform="translate(420 438)">
-    <circle cx="0" cy="0" r="32" fill="#d8a23a" stroke="#0a1a12" stroke-width="3"/>
-    <circle cx="0" cy="0" r="25" fill="#fdf6e3" stroke="#a8861f" stroke-width="2"/>
-    <path d="M 0 -20 L 8 0 L 0 4 L -8 0 Z" fill="#e95d5d"/>
-    <path d="M 0 20 L 8 0 L 0 -4 L -8 0 Z" fill="#1a1a1a"/>
+  <!-- Compass icon (= 🧭) right against the text -->
+  <g transform="translate(378 378)">
+    <circle cx="0" cy="0" r="28" fill="#d8a23a" stroke="#0a1a12" stroke-width="3"/>
+    <circle cx="0" cy="0" r="22" fill="#fdf6e3" stroke="#a8861f" stroke-width="2"/>
+    <path d="M 0 -18 L 7 0 L 0 4 L -7 0 Z" fill="#e95d5d"/>
+    <path d="M 0 18 L 7 0 L 0 -4 L -7 0 Z" fill="#1a1a1a"/>
     <circle cx="0" cy="0" r="3" fill="#1a1a1a"/>
-    <text x="0" y="-15" font-size="11" font-family="sans-serif" font-weight="900" fill="#1a1a1a" text-anchor="middle">N</text>
+    <text x="0" y="-13" font-size="10" font-family="sans-serif" font-weight="900" fill="#1a1a1a" text-anchor="middle">N</text>
   </g>
 </svg>
