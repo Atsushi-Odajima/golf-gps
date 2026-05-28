@@ -32,17 +32,22 @@ export default function PlayPage() {
 
   // Init course + round
   useEffect(() => {
-    const c = getCourse(params.id);
-    if (!c) return;
-    setCourse(c);
-    let r = getActiveRound();
-    if (!r || r.courseId !== c.id) {
-      r = startRound(c.id);
-    }
-    setRound(r);
-    // pick first calibrated hole as starting hole
-    const firstReady = c.holes.find((h) => h.tee && h.green);
-    setCurrentHole(firstReady?.number ?? 1);
+    let cancelled = false;
+    (async () => {
+      const c = await getCourse(params.id);
+      if (cancelled || !c) return;
+      setCourse(c);
+      let r = getActiveRound();
+      if (!r || r.courseId !== c.id) {
+        r = startRound(c.id);
+      }
+      setRound(r);
+      const firstReady = c.holes.find((h) => h.tee && h.green);
+      setCurrentHole(firstReady?.number ?? 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [params.id]);
 
   // Load image when hole changes

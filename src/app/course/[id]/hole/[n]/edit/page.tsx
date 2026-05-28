@@ -31,20 +31,25 @@ export default function HoleEditPage() {
   const { fix, error: gpsError } = useGeolocation(true);
 
   useEffect(() => {
-    const c = getCourse(params.id);
-    if (!c) return;
-    setCourse(c);
-    const hole = c.holes.find((h) => h.number === holeNumber);
-    if (hole) {
-      setPar(hole.par);
-      setTeePx(hole.teePx);
-      setGreenPx(hole.greenPx);
-      setTee(hole.tee);
-      setGreen(hole.green);
-    }
-    loadImage(imageKey(params.id, holeNumber)).then((dataUrl) => {
-      if (dataUrl) setImageUrl(dataUrl);
-    });
+    let cancelled = false;
+    (async () => {
+      const c = await getCourse(params.id);
+      if (cancelled || !c) return;
+      setCourse(c);
+      const hole = c.holes.find((h) => h.number === holeNumber);
+      if (hole) {
+        setPar(hole.par);
+        setTeePx(hole.teePx);
+        setGreenPx(hole.greenPx);
+        setTee(hole.tee);
+        setGreen(hole.green);
+      }
+      const dataUrl = await loadImage(imageKey(params.id, holeNumber));
+      if (!cancelled && dataUrl) setImageUrl(dataUrl);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [params.id, holeNumber]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,7 +99,7 @@ export default function HoleEditPage() {
     else setGreen({ lat: fix.lat, lng: fix.lng });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!course) return;
     const updated: Course = {
       ...course,
@@ -112,8 +117,12 @@ export default function HoleEditPage() {
           : h,
       ),
     };
-    saveCourse(updated);
-    router.push(`/course/${params.id}`);
+    try {
+      await saveCourse(updated);
+      router.push(`/course/${params.id}`);
+    } catch (e) {
+      alert("保存に失敗しました: " + String(e));
+    }
   };
 
   const canSave = imageUrl && teePx && greenPx && tee && green;

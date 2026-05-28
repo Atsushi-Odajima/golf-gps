@@ -1,46 +1,117 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  BackupBundle,
   Course,
   createBlankCourse,
   deleteCourse,
+  downloadBackup,
+  exportAll,
   getActiveRound,
+  getStorageStatus,
+  importAll,
   listCourses,
+  requestPersistentStorage,
   saveCourse,
+  StorageStatus,
 } from "@/lib/storage";
 
 export default function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [hasActive, setHasActive] = useState(false);
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
+  const [storage, setStorage] = useState<StorageStatus | null>(null);
+  const [showStorage, setShowStorage] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const refresh = () => {
-    setCourses(listCourses());
+  const refresh = async () => {
+    try {
+      const list = await listCourses();
+      setCourses(list);
+    } catch (e) {
+      console.error("listCourses failed", e);
+    }
     const r = getActiveRound();
     setHasActive(!!r);
     setActiveCourseId(r?.courseId ?? null);
+    try {
+      const s = await getStorageStatus();
+      setStorage(s);
+    } catch {
+      // ignore
+    }
   };
 
   useEffect(() => {
-    refresh();
+    // request persistent storage at startup so iOS/Safari doesn't evict our data
+    requestPersistentStorage().finally(() => {
+      refresh();
+    });
   }, []);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const name = prompt("コース名を入力", "新しいコース");
     if (!name) return;
     const countStr = prompt("ホール数（例: 18）", "18");
     const count = Math.max(1, Math.min(36, parseInt(countStr || "18", 10) || 18));
     const course = createBlankCourse(name, count);
-    saveCourse(course);
-    refresh();
+    try {
+      await saveCourse(course);
+      await refresh();
+    } catch (e) {
+      alert("コース保存に失敗しました: " + String(e));
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("このコースを削除しますか？")) return;
     await deleteCourse(id);
-    refresh();
+    await refresh();
+  };
+
+  const handleExport = async () => {
+    try {
+      const bundle = await exportAll();
+      downloadBackup(bundle);
+    } catch (e) {
+      alert("エクスポート失敗: " + String(e));
+    }
+  };
+
+  const handleImportClick = () => fileRef.current?.click();
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // reset so same file can be re-picked
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const bundle = JSON.parse(text) as BackupBundle;
+      const mode = confirm(
+        "「OK」で現在のデータに追加、「キャンセル」で全て置き換えます",
+      )
+        ? "merge"
+        : "replace";
+      await importAll(bundle, mode);
+      await refresh();
+      alert("インポート完了しました");
+    } catch (err) {
+      alert("インポート失敗: " + String(err));
+    }
+  };
+
+  const fmtBytes = (n?: number) => {
+    if (n == null) return "—";
+    const u = ["B", "KB", "MB", "GB"];
+    let i = 0;
+    let v = n;
+    while (v >= 1024 && i < u.length - 1) {
+      v /= 1024;
+      i++;
+    }
+    return `${v.toFixed(v >= 100 ? 0 : 1)} ${u[i]}`;
   };
 
   return (
@@ -66,6 +137,59 @@ export default function HomePage() {
             </div>
           </Link>
         )}
+
+        {/* Storage status */}
+        <div className="card">
+          <div
+            className="row spread"
+            style={{ cursor: "pointer" }}
+            onClick={() => setShowStorage((s) => !s)}
+          >
+            <div>
+              <div style={{ fontWeight: 700 }}>
+                💾 保存状況{" "}
+                {storage?.persistent ? (
+                  <span style={{ color: "var(--accent)" }}>✓ 永続化済み</span>
+                ) : (
+                  <span style={{ color: "var(--accent-2)" }}>● 標準（消える可能性あり）</span>
+                )}
+              </div>
+              <div className="muted">
+                コース {storage?.courses ?? "—"} ／ 画像 {storage?.images ?? "—"} 件
+              </div>
+            </div>
+            <div style={{ fontSize: 18 }}>{showStorage ? "▾" : "▸"}</div>
+          </div>
+          {showStorage && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                使用量: {fmtBytes(storage?.usageBytes)} / {fmtBytes(storage?.quotaBytes)}
+              </div>
+              {!storage?.persistent && (
+                <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
+                  ※ iOSは長期アクセスがないと自動でデータを消すことがあります。
+                  「ホーム画面に追加」して使うと永続化されやすくなります。
+                  バックアップも併せて取ることを推奨します。
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn" onClick={handleExport} style={{ flex: 1 }}>
+                  ⬇ バックアップ
+                </button>
+                <button className="btn" onClick={handleImportClick} style={{ flex: 1 }}>
+                  ⬆ 復元
+                </button>
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/json,.json"
+                style={{ display: "none" }}
+                onChange={handleImportFile}
+              />
+            </div>
+          )}
+        </div>
 
         <h2 style={{ fontSize: 14, color: "var(--text-dim)", margin: "16px 4px 8px" }}>
           コース一覧
