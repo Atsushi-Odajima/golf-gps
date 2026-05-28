@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ja">
       <body>
-        <div className="app-brand" aria-label="壁ゴルフ距離計">壁ゴルフ距離計</div>
+        <div className="app-brand" aria-label="壁ゴルフ距離計">壁ゴルフ距離計🧭</div>
         {children}
         <ServiceWorkerRegister />
       </body>

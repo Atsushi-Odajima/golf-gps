@@ -7,11 +7,25 @@
       <stop offset="100%" stop-color="#06231a"/>
     </radialGradient>
   </defs>
+
   <!-- rounded square background -->
   <rect x="0" y="0" width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
 
-  <!-- Silhouette of cap-wearing male, upper body. -->
-  <!-- Using paths, dark near-black. -->
+  <!-- ===== Golf club (drawn BEHIND silhouette so the hand grips it) ===== -->
+  <!-- Shaft: from upper-right area down to bottom-right -->
+  <line x1="395" y1="180" x2="332" y2="365"
+        stroke="#d8dde0" stroke-width="7" stroke-linecap="round"/>
+  <!-- Clubhead (iron) at top of shaft, angled like resting on shoulder -->
+  <g transform="translate(395 180) rotate(110)">
+    <path d="M -8 -7
+             L 36 -12
+             C 48 -12, 54 -6, 54 0
+             C 54 6, 48 12, 36 12
+             L -8 7 Z"
+          fill="#9aa1a6" stroke="#1a1a1a" stroke-width="2"/>
+  </g>
+
+  <!-- ===== Silhouette: cap-wearing male upper body ===== -->
   <g fill="#0a1a12" opacity="0.92">
     <!-- shoulders / torso (semi-ellipse rising from bottom) -->
     <path d="M 96 512
@@ -38,11 +52,33 @@
              C 365 246, 358 256, 340 258
              L 175 258
              C 158 258, 148 246, 150 232 Z"/>
+    <!-- right hand/forearm wrapping around the shaft -->
+    <ellipse cx="335" cy="368" rx="26" ry="18" transform="rotate(-30 335 368)"/>
   </g>
 
-  <!-- White text overlay: 壁ゴルフ / 距離計 -->
+  <!-- Grip on the lower part of the shaft (over the hand) -->
+  <line x1="356" y1="307" x2="328" y2="386"
+        stroke="#1a1208" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- ===== White text: 壁ゴルフ / 距離計 + compass ===== -->
   <g font-family="WenQuanYi Zen Hei, Unifont-JP, sans-serif" font-weight="900" fill="#ffffff" text-anchor="middle">
     <text x="256" y="402" font-size="78" letter-spacing="-2">壁ゴルフ</text>
-    <text x="256" y="478" font-size="64" letter-spacing="-1">距離計</text>
+    <text x="206" y="478" font-size="60" letter-spacing="-1">距離計</text>
+  </g>
+
+  <!-- ===== Compass icon (drawn as paths, to the right of "距離計") ===== -->
+  <g transform="translate(338 458)">
+    <!-- outer brass ring -->
+    <circle cx="0" cy="0" r="32" fill="#d8a23a" stroke="#0a1a12" stroke-width="3"/>
+    <!-- inner face -->
+    <circle cx="0" cy="0" r="25" fill="#fdf6e3" stroke="#a8861f" stroke-width="2"/>
+    <!-- needle: red north pointing up -->
+    <path d="M 0 -20 L 8 0 L 0 4 L -8 0 Z" fill="#e95d5d"/>
+    <!-- needle: dark south -->
+    <path d="M 0 20 L 8 0 L 0 -4 L -8 0 Z" fill="#1a1a1a"/>
+    <!-- centre pivot -->
+    <circle cx="0" cy="0" r="3" fill="#1a1a1a"/>
+    <!-- N marker -->
+    <text x="0" y="-15" font-size="11" font-family="sans-serif" font-weight="900" fill="#1a1a1a" text-anchor="middle">N</text>
   </g>
 </svg>

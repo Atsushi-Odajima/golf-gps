@@ -91,7 +91,7 @@ select {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px 12px 130px; /* leave space for brand badge */
+  padding: 12px 16px 12px 150px; /* leave space for brand badge */
   background: var(--panel);
   border-bottom: 1px solid var(--line);
   position: sticky;
