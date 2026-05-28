@@ -6,6 +6,7 @@ export interface ImportedHole {
   number: number;
   par: number;
   imageUrl: string | null;
+  imageCandidates?: string[];
   yardages?: Record<string, number>;
 }
 
@@ -13,6 +14,12 @@ export interface ImportedCourse {
   name: string;
   source: string;
   holes: ImportedHole[];
+  diagnostics?: {
+    htmlBytes: number;
+    totalImages: number;
+    holeSectionsTried: number;
+    notes: string[];
+  };
 }
 
 export interface ImportProgress {
@@ -87,14 +94,23 @@ export async function saveImportedCourse(
           failures,
         });
         const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(ih.imageUrl)}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status}: ${body.slice(0, 80)}`);
+        }
         const blob = await res.blob();
+        if (blob.size < 200) {
+          throw new Error(`画像サイズが小さすぎる (${blob.size}B)`);
+        }
         const dataUrl = await downsampleImageBlob(blob, 1600);
         await saveImage(imageKey(course.id, ih.number), dataUrl);
         const holeIdx = course.holes.findIndex((h) => h.number === ih.number);
         if (holeIdx >= 0) course.holes[holeIdx].imageDataUrl = "stored";
       } catch (e) {
-        failures.push({ hole: ih.number, reason: String(e) });
+        failures.push({
+          hole: ih.number,
+          reason: `${e instanceof Error ? e.message : String(e)} (${ih.imageUrl})`,
+        });
       }
     } else {
       failures.push({ hole: ih.number, reason: "画像URLが見つからず" });

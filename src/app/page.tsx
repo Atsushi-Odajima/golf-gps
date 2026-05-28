@@ -86,18 +86,51 @@ export default function HomePage() {
     try {
       const imported = await fetchImportedCourse(url.trim());
       if (!imported.holes.length) throw new Error("ホール情報が抽出できませんでした");
+      const withImage = imported.holes.filter((h) => h.imageUrl).length;
       const confirmMsg =
         `「${imported.name}」を ${imported.holes.length} ホール分インポートします。\n` +
-        `画像のあるホール: ${imported.holes.filter((h) => h.imageUrl).length}\n` +
+        `画像URLが見つかったホール: ${withImage} / ${imported.holes.length}\n\n` +
+        (withImage === 0
+          ? "⚠ 画像URLが1つも見つかりませんでした。インポートしても画像は付きません。\n"
+          : withImage < imported.holes.length
+            ? "⚠ 一部のホールで画像URLが見つかっていません。\n"
+            : "") +
         `続行しますか？`;
       if (!confirm(confirmMsg)) {
         setImporting(null);
         return;
       }
-      await saveImportedCourse(imported, (p) => setImporting(p));
+      const result = await saveImportedCourse(imported, (p) => setImporting(p));
+      const finalFailures = importing?.failures ?? [];
       await refresh();
       setImporting(null);
-      alert(`インポート完了: ${imported.name}`);
+
+      // build a concise summary
+      const okCount = result.holes.filter((h) => h.imageDataUrl).length;
+      let msg = `インポート完了: ${imported.name}\n画像取得 ${okCount} / ${imported.holes.length} ホール`;
+      const failuresAccum: { hole: number; reason: string }[] = [];
+      // collect failures from progress callbacks — store last seen
+      // (saveImportedCourse mutates failures inside, so just rebuild from result)
+      for (const h of imported.holes) {
+        const saved = result.holes.find((x) => x.number === h.number);
+        if (!saved?.imageDataUrl) {
+          failuresAccum.push({
+            hole: h.number,
+            reason: h.imageUrl ? "ダウンロード失敗" : "画像URL無し",
+          });
+        }
+      }
+      if (failuresAccum.length) {
+        msg +=
+          `\n\n失敗: ${failuresAccum
+            .slice(0, 6)
+            .map((f) => `H${f.hole} (${f.reason})`)
+            .join(", ")}` + (failuresAccum.length > 6 ? "..." : "");
+        if (imported.diagnostics) {
+          msg += `\n\n解析情報: HTML ${(imported.diagnostics.htmlBytes / 1024).toFixed(1)}KB, 全img ${imported.diagnostics.totalImages}個`;
+        }
+      }
+      alert(msg);
     } catch (e) {
       setImporting(null);
       alert("インポート失敗: " + (e instanceof Error ? e.message : String(e)));
