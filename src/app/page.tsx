@@ -46,7 +46,7 @@ export default function HomePage() {
   return (
     <>
       <div className="appbar">
-        <h1>⛳ Golf GPS</h1>
+        <h1>コース一覧</h1>
         <button className="btn primary" onClick={handleAdd}>
           ＋コース
         </button>

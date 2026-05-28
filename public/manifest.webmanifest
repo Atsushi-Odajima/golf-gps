@@ -1,12 +1,13 @@
 {
-  "name": "Golf GPS",
-  "short_name": "Golf GPS",
+  "name": "壁ゴルフ距離計",
+  "short_name": "壁ゴルフ距離計",
   "description": "ゴルフ用GPS距離計＆スコアトラッカー",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a1410",
   "theme_color": "#0a3d28",
+  "lang": "ja",
   "icons": [
     {
       "src": "/icon-192.png",

@@ -1,0 +1,48 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#1d6a40"/>
+      <stop offset="65%" stop-color="#0a3d28"/>
+      <stop offset="100%" stop-color="#06231a"/>
+    </radialGradient>
+  </defs>
+  <!-- rounded square background -->
+  <rect x="0" y="0" width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
+
+  <!-- Silhouette of cap-wearing male, upper body. -->
+  <!-- Using paths, dark near-black. -->
+  <g fill="#0a1a12" opacity="0.92">
+    <!-- shoulders / torso (semi-ellipse rising from bottom) -->
+    <path d="M 96 512
+             L 96 430
+             C 96 360, 175 320, 256 320
+             C 337 320, 416 360, 416 430
+             L 416 512 Z"/>
+    <!-- neck -->
+    <rect x="232" y="280" width="48" height="55" rx="8"/>
+    <!-- head (oval) -->
+    <ellipse cx="256" cy="240" rx="76" ry="86"/>
+    <!-- cap crown (dome) -->
+    <path d="M 178 218
+             C 178 162, 215 138, 256 138
+             C 297 138, 334 162, 334 218
+             L 334 232
+             C 310 220, 280 214, 256 214
+             C 232 214, 202 220, 178 232 Z"/>
+    <!-- cap brim (forward visor) -->
+    <path d="M 150 232
+             C 175 218, 220 214, 256 214
+             C 282 214, 305 218, 325 226
+             L 360 232
+             C 365 246, 358 256, 340 258
+             L 175 258
+             C 158 258, 148 246, 150 232 Z"/>
+  </g>
+
+  <!-- White text overlay: 壁ゴルフ / 距離計 -->
+  <g font-family="WenQuanYi Zen Hei, Unifont-JP, sans-serif" font-weight="900" fill="#ffffff" text-anchor="middle">
+    <text x="256" y="402" font-size="78" letter-spacing="-2">壁ゴルフ</text>
+    <text x="256" y="478" font-size="64" letter-spacing="-1">距離計</text>
+  </g>
+</svg>

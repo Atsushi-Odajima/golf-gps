@@ -154,7 +154,7 @@ export default function PlayPage() {
           top: 0,
           left: 0,
           right: 0,
-          padding: "calc(env(safe-area-inset-top) + 8px) 12px 8px",
+          padding: "calc(env(safe-area-inset-top) + 8px) 12px 8px 130px",
           background: "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%)",
           zIndex: 10,
           display: "flex",
