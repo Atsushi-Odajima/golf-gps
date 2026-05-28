@@ -21,6 +21,7 @@ export default function HoleEditPage() {
   const [tee, setTee] = useState<LatLng | null>(null);
   const [green, setGreen] = useState<LatLng | null>(null);
   const [par, setPar] = useState<number>(4);
+  const [yardages, setYardages] = useState<Record<string, number>>({});
   const [mode, setMode] = useState<Mode>(null);
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
 
@@ -43,6 +44,7 @@ export default function HoleEditPage() {
         setGreenPx(hole.greenPx);
         setTee(hole.tee);
         setGreen(hole.green);
+        setYardages(hole.yardages ?? {});
       }
       const dataUrl = await loadImage(imageKey(params.id, holeNumber));
       if (!cancelled && dataUrl) setImageUrl(dataUrl);
@@ -112,6 +114,7 @@ export default function HoleEditPage() {
               green,
               teePx,
               greenPx,
+              yardages: Object.keys(yardages).length ? yardages : undefined,
               imageDataUrl: imageUrl ? "stored" : null,
             }
           : h,
@@ -158,6 +161,8 @@ export default function HoleEditPage() {
             </select>
           </div>
         </div>
+
+        <YardageCard yardages={yardages} onChange={setYardages} />
 
         <div className="card">
           <div className="row spread" style={{ marginBottom: 8 }}>
@@ -329,6 +334,109 @@ export default function HoleEditPage() {
         </div>
       </div>
     </>
+  );
+}
+
+const TEE_DEFS: { key: string; label: string; color: string; text?: string }[] = [
+  { key: "Black", label: "BLACK", color: "#1a1a1a", text: "#ffffff" },
+  { key: "Blue", label: "BLUE", color: "#3a8fff", text: "#ffffff" },
+  { key: "White", label: "WHITE", color: "#f3f4ec", text: "#1a1a1a" },
+  { key: "Green", label: "GREEN", color: "#3aa55c", text: "#ffffff" },
+  { key: "Gold", label: "GOLD", color: "#d8a23a", text: "#1a1a1a" },
+  { key: "Red", label: "RED", color: "#e95d5d", text: "#ffffff" },
+];
+
+function YardageCard({
+  yardages,
+  onChange,
+}: {
+  yardages: Record<string, number>;
+  onChange: (next: Record<string, number>) => void;
+}) {
+  const setVal = (key: string, raw: string) => {
+    const next = { ...yardages };
+    if (raw === "") {
+      delete next[key];
+    } else {
+      const n = parseInt(raw, 10);
+      if (!isNaN(n) && n >= 0 && n < 1000) next[key] = n;
+    }
+    onChange(next);
+  };
+
+  // Sort: tees with values first (in TEE_DEFS order), then empty tees
+  const ordered = [...TEE_DEFS].sort((a, b) => {
+    const hasA = a.key in yardages ? 0 : 1;
+    const hasB = b.key in yardages ? 0 : 1;
+    return hasA - hasB;
+  });
+
+  return (
+    <div className="card">
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>ティー別ヤーデージ</div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap: 8,
+        }}
+      >
+        {ordered.map((t) => (
+          <div
+            key={t.key}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "var(--panel-2)",
+              border: "1px solid var(--line)",
+              borderRadius: 8,
+              padding: "6px 8px",
+            }}
+          >
+            <span
+              style={{
+                background: t.color,
+                color: t.text,
+                fontWeight: 800,
+                fontSize: 10,
+                padding: "3px 6px",
+                borderRadius: 4,
+                minWidth: 42,
+                textAlign: "center",
+                border: t.key === "White" ? "1px solid var(--line)" : "none",
+                letterSpacing: 0.5,
+              }}
+            >
+              {t.label}
+            </span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={999}
+              value={yardages[t.key] ?? ""}
+              onChange={(e) => setVal(t.key, e.target.value)}
+              placeholder="—"
+              style={{
+                flex: 1,
+                background: "transparent",
+                border: "none",
+                color: "var(--text)",
+                fontSize: 18,
+                fontWeight: 700,
+                textAlign: "right",
+                padding: 0,
+                width: "100%",
+                minWidth: 0,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            />
+            <span className="muted" style={{ fontSize: 11 }}>yd</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

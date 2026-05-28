@@ -10,6 +10,7 @@ export interface Hole {
   green: LatLng | null;
   teePx: Pixel | null;
   greenPx: Pixel | null;
+  yardages?: Record<string, number>;
 }
 
 export interface Course {

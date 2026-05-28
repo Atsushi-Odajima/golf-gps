@@ -74,6 +74,7 @@ export async function saveImportedCourse(
     green: null,
     teePx: null,
     greenPx: null,
+    yardages: h.yardages,
   }));
   const course: Course = { id, name: imported.name, holes };
 
