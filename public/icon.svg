@@ -8,54 +8,29 @@
     </radialGradient>
   </defs>
 
-  <!-- rounded square background -->
   <rect x="0" y="0" width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
 
-  <!-- ===== Silhouette group (man holding a driver club, all same dark color) ===== -->
+  <!-- ===== Silhouette ===== -->
   <g fill="#0a1a12" stroke="#0a1a12" opacity="0.92">
-
-    <!-- Driver shaft -->
     <line x1="372" y1="180" x2="110" y2="190"
           stroke-width="14" stroke-linecap="round"/>
-
-    <!-- Driver clubhead -->
     <g transform="translate(85 195) rotate(-8)">
       <ellipse cx="0" cy="0" rx="64" ry="42"/>
       <circle cx="-42" cy="6" r="24"/>
     </g>
-
-    <!-- Body silhouette -->
-    <path d="M 96 512
-             L 96 430
-             C 96 360, 175 320, 256 320
-             C 337 320, 416 360, 416 430
-             L 416 512 Z" stroke="none"/>
+    <path d="M 96 512 L 96 430 C 96 360, 175 320, 256 320 C 337 320, 416 360, 416 430 L 416 512 Z" stroke="none"/>
     <rect x="232" y="280" width="48" height="55" rx="8" stroke="none"/>
     <ellipse cx="256" cy="240" rx="76" ry="86" stroke="none"/>
-    <path d="M 178 218
-             C 178 162, 215 138, 256 138
-             C 297 138, 334 162, 334 218
-             L 334 232
-             C 310 220, 280 214, 256 214
-             C 232 214, 202 220, 178 232 Z" stroke="none"/>
-    <path d="M 150 232
-             C 175 218, 220 214, 256 214
-             C 282 214, 305 218, 325 226
-             L 360 232
-             C 365 246, 358 256, 340 258
-             L 175 258
-             C 158 258, 148 246, 150 232 Z" stroke="none"/>
-
-    <!-- Right arm raised -->
+    <path d="M 178 218 C 178 162, 215 138, 256 138 C 297 138, 334 162, 334 218 L 334 232 C 310 220, 280 214, 256 214 C 232 214, 202 220, 178 232 Z" stroke="none"/>
+    <path d="M 150 232 C 175 218, 220 214, 256 214 C 282 214, 305 218, 325 226 L 360 232 C 365 246, 358 256, 340 258 L 175 258 C 158 258, 148 246, 150 232 Z" stroke="none"/>
     <line x1="378" y1="335" x2="438" y2="252"
           stroke-width="46" stroke-linecap="round"/>
     <line x1="438" y1="252" x2="378" y2="180"
           stroke-width="40" stroke-linecap="round"/>
     <ellipse cx="376" cy="180" rx="28" ry="22" stroke="none"/>
-
   </g>
 
-  <!-- "へらけん" label inside clubhead -->
+  <!-- "へらけん" -->
   <g transform="translate(82 196) rotate(-8)">
     <text x="0" y="6"
           font-family="Meiryo, メイリオ, 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Noto Sans JP', IPAPGothic, IPAGothic, 'WenQuanYi Zen Hei', sans-serif"
@@ -64,13 +39,22 @@
           letter-spacing="-0.5">へらけん</text>
   </g>
 
-  <!-- ===== Single-line app name: 壁の距離計 + compass (raised, tight spacing) ===== -->
+  <!-- ===== App name centered: 壁の距離計 + compass as one group ===== -->
+  <!--
+    Total content width is approximately:
+      text "壁の距離計" (5 chars * 60 - letter-spacing) ≈ 296
+      + gap (~4)
+      + compass diameter (56)
+      = ~356
+    Centering in viewBox width 512: content from x=78 to x=434.
+      text-anchor=middle  -> text x = 78 + 296/2 = 226
+      compass center      -> 78 + 296 + 4 + 28 = 406
+  -->
   <g font-family="Meiryo, メイリオ, 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Noto Sans JP', IPAPGothic, IPAGothic, 'WenQuanYi Zen Hei', sans-serif" font-weight="900" fill="#ffffff" text-anchor="middle">
-    <text x="210" y="395" font-size="60" letter-spacing="-1">壁の距離計</text>
+    <text x="236" y="395" font-size="60" letter-spacing="-1">壁の距離計</text>
   </g>
 
-  <!-- Compass icon (= 🧭) right against the text -->
-  <g transform="translate(378 378)">
+  <g transform="translate(416 378)">
     <circle cx="0" cy="0" r="28" fill="#d8a23a" stroke="#0a1a12" stroke-width="3"/>
     <circle cx="0" cy="0" r="22" fill="#fdf6e3" stroke="#a8861f" stroke-width="2"/>
     <path d="M 0 -18 L 7 0 L 0 4 L -7 0 Z" fill="#e95d5d"/>
