@@ -340,48 +340,66 @@ export default function PlayPage() {
             )}
           </div>
         ) : (
-          <div className="muted" style={{ textAlign: "center", padding: 24 }}>
-            {hole?.tee && hole?.green
-              ? "マップ画像が未登録です"
-              : "このホールはキャリブレーション未設定です"}
-            <br />
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              background:
+                "radial-gradient(circle at 50% 40%, #1d4a35 0%, #0a2418 70%, #050d09 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+              gap: 12,
+              padding: 24,
+            }}
+          >
+            <div style={{ fontSize: 48, opacity: 0.5 }}>⛳</div>
+            <div className="muted" style={{ textAlign: "center" }}>
+              {hole?.tee && hole?.green
+                ? "マップ画像が未登録です"
+                : "このホールはキャリブレーション未設定（デモ表示）"}
+            </div>
             <Link
               href={`/course/${params.id}/hole/${currentHole}/edit`}
-              className="btn primary"
-              style={{ marginTop: 16, display: "inline-flex" }}
+              className="btn"
+              style={{ marginTop: 8 }}
             >
-              ホールを設定
+              このホールを設定
             </Link>
           </div>
         )}
       </div>
 
-      {/* Big distance-to-green panel */}
+      {/* Big distance-to-green panel (Marshal-Ai style) */}
       <div
         style={{
           position: "absolute",
-          top: "calc(env(safe-area-inset-top) + 60px)",
-          right: 12,
-          background: "rgba(10,20,16,0.85)",
-          border: "1px solid var(--accent)",
-          borderRadius: 12,
-          padding: "8px 14px",
+          top: "calc(env(safe-area-inset-top) + 56px)",
+          right: 8,
           textAlign: "right",
           zIndex: 8,
-          minWidth: 110,
+          textShadow: "0 2px 6px rgba(0,0,0,0.9)",
+          pointerEvents: "none",
         }}
       >
-        <div className="muted" style={{ fontSize: 11 }}>
-          グリーンまで
+        <div
+          style={{
+            fontSize: 72,
+            fontWeight: 800,
+            lineHeight: 0.9,
+            color: "#fff",
+            letterSpacing: "-0.02em",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {yardsToGreen !== null ? Math.round(yardsToGreen) : "---"}
         </div>
-        <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1, color: "var(--accent)" }}>
-          {yardsToGreen !== null ? Math.round(yardsToGreen) : "--"}
-        </div>
-        <div className="muted" style={{ fontSize: 11 }}>
-          yard
+        <div style={{ fontSize: 14, color: "#fff", opacity: 0.9, marginTop: 2 }}>
+          グリーンまで yard
         </div>
         {yardsToTee !== null && (
-          <div className="muted" style={{ fontSize: 10, marginTop: 4 }}>
+          <div style={{ fontSize: 11, color: "#fff", opacity: 0.7, marginTop: 4 }}>
             ティーから {Math.round(yardsToTee)}y
           </div>
         )}

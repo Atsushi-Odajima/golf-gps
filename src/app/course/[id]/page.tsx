@@ -57,10 +57,9 @@ export default function CoursePage() {
             </div>
             <button
               className="btn primary"
-              disabled={!someReady}
               onClick={handleStart}
             >
-              {ready ? "▶ ラウンド開始" : "▶ 設定済から開始"}
+              {ready ? "▶ ラウンド開始" : someReady ? "▶ 設定済から開始" : "▶ デモ開始"}
             </button>
           </div>
         </div>
