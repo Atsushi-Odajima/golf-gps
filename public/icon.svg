@@ -18,32 +18,26 @@
     <line x1="372" y1="180" x2="110" y2="190"
           stroke-width="14" stroke-linecap="round"/>
 
-    <!-- Driver clubhead (silhouette: large bulb with rounded heel for that driver look) -->
+    <!-- Driver clubhead (silhouette: large bulb with rounded heel) -->
     <g transform="translate(85 195) rotate(-8)">
       <ellipse cx="0" cy="0" rx="64" ry="42"/>
-      <!-- heel bulge -->
       <circle cx="-42" cy="6" r="24"/>
     </g>
 
-    <!-- ===== Body silhouette ===== -->
-    <!-- shoulders / torso -->
+    <!-- Body silhouette -->
     <path d="M 96 512
              L 96 430
              C 96 360, 175 320, 256 320
              C 337 320, 416 360, 416 430
              L 416 512 Z" stroke="none"/>
-    <!-- neck -->
     <rect x="232" y="280" width="48" height="55" rx="8" stroke="none"/>
-    <!-- head: drawn AFTER shaft so the shaft visually passes BEHIND the head -->
     <ellipse cx="256" cy="240" rx="76" ry="86" stroke="none"/>
-    <!-- cap crown -->
     <path d="M 178 218
              C 178 162, 215 138, 256 138
              C 297 138, 334 162, 334 218
              L 334 232
              C 310 220, 280 214, 256 214
              C 232 214, 202 220, 178 232 Z" stroke="none"/>
-    <!-- cap brim -->
     <path d="M 150 232
              C 175 218, 220 214, 256 214
              C 282 214, 305 218, 325 226
@@ -52,14 +46,11 @@
              L 175 258
              C 158 258, 148 246, 150 232 Z" stroke="none"/>
 
-    <!-- ===== RIGHT ARM RAISED HIGH (visible across the right side of the body) ===== -->
-    <!-- Upper arm: from right shoulder up-and-out to elbow -->
+    <!-- Right arm raised, gripping the shaft -->
     <line x1="378" y1="335" x2="438" y2="252"
           stroke-width="46" stroke-linecap="round"/>
-    <!-- Forearm: from elbow up-and-in to the hand at the shaft grip -->
     <line x1="438" y1="252" x2="378" y2="180"
           stroke-width="40" stroke-linecap="round"/>
-    <!-- Hand wrapping the shaft grip -->
     <ellipse cx="376" cy="180" rx="28" ry="22" stroke="none"/>
 
   </g>
@@ -73,14 +64,13 @@
           letter-spacing="-0.5">へらけん</text>
   </g>
 
-  <!-- ===== White text: 壁ゴルフ / 距離計 + compass ===== -->
+  <!-- ===== Single-line app name: 壁の距離計 + compass ===== -->
   <g font-family="WenQuanYi Zen Hei, Unifont-JP, sans-serif" font-weight="900" fill="#ffffff" text-anchor="middle">
-    <text x="256" y="402" font-size="78" letter-spacing="-2">壁ゴルフ</text>
-    <text x="206" y="478" font-size="60" letter-spacing="-1">距離計</text>
+    <text x="190" y="458" font-size="64" letter-spacing="-1">壁の距離計</text>
   </g>
 
-  <!-- ===== Compass icon ===== -->
-  <g transform="translate(338 458)">
+  <!-- Compass icon (= 🧭) placed to the right of the text, same baseline -->
+  <g transform="translate(420 438)">
     <circle cx="0" cy="0" r="32" fill="#d8a23a" stroke="#0a1a12" stroke-width="3"/>
     <circle cx="0" cy="0" r="25" fill="#fdf6e3" stroke="#a8861f" stroke-width="2"/>
     <path d="M 0 -20 L 8 0 L 0 4 L -8 0 Z" fill="#e95d5d"/>
