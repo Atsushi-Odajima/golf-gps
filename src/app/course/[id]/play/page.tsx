@@ -34,7 +34,10 @@ export default function PlayPage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
   const [showHolePicker, setShowHolePicker] = useState(false);
+  const [showTeePicker, setShowTeePicker] = useState(false);
+  const [tapMode, setTapMode] = useState<"green" | null>(null);
   const lastSaveAtRef = useRef<number>(0);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   const { fix, error: gpsError } = useGeolocation(true);
 
@@ -147,10 +150,33 @@ export default function PlayPage() {
     };
   }, [hole]);
 
+  const selectedTee = round?.selectedTee;
+  const teeYardage = selectedTee && hole?.yardages?.[selectedTee]
+    ? hole.yardages[selectedTee]
+    : null;
+
+  /**
+   * Distance to green = (selected tee yardage) - (yards walked from tee).
+   *
+   * Walked distance is straight-line GPS distance from the saved tee position.
+   * This assumes the player generally walks toward the green; it doesn't account
+   * for direction so wandering sideways still subtracts from the remaining yards.
+   * Acceptable trade-off for the simplicity the user asked for.
+   *
+   * Falls back to direct haversine to green GPS if (legacy) green is set.
+   */
   const yardsToGreen = useMemo(() => {
-    if (!fix || !hole?.green) return null;
-    return metersToYards(haversineMeters(fix, hole.green));
-  }, [fix, hole?.green]);
+    if (!fix) return null;
+    if (teeYardage != null && hole?.tee) {
+      const walkedM = haversineMeters(fix, hole.tee);
+      const walkedY = metersToYards(walkedM);
+      return Math.max(0, teeYardage - walkedY);
+    }
+    if (hole?.green) {
+      return metersToYards(haversineMeters(fix, hole.green));
+    }
+    return null;
+  }, [fix, hole, teeYardage]);
 
   const yardsToTee = useMemo(() => {
     if (!fix || !hole?.tee) return null;
@@ -184,6 +210,79 @@ export default function PlayPage() {
       saveActiveRound(next);
       return next;
     });
+  };
+
+  const setSelectedTee = (teeName: string) => {
+    setRound((prev) => {
+      if (!prev) return prev;
+      const next: Round = { ...prev, selectedTee: teeName };
+      saveActiveRound(next);
+      return next;
+    });
+    setShowTeePicker(false);
+  };
+
+  /**
+   * Map a click/touch on the displayed map image to natural-image-pixel coords.
+   * Accounts for objectFit: contain letterbox/pillarbox.
+   */
+  const tapToImagePx = (
+    clientX: number,
+    clientY: number,
+  ): { x: number; y: number } | null => {
+    const img = imgRef.current;
+    if (!img || !imgSize) return null;
+    const rect = img.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const containerAspect = rect.width / rect.height;
+    const imageAspect = imgSize.w / imgSize.h;
+    let displayedW: number, displayedH: number, offsetX: number, offsetY: number;
+    if (containerAspect > imageAspect) {
+      displayedH = rect.height;
+      displayedW = displayedH * imageAspect;
+      offsetX = (rect.width - displayedW) / 2;
+      offsetY = 0;
+    } else {
+      displayedW = rect.width;
+      displayedH = displayedW / imageAspect;
+      offsetX = 0;
+      offsetY = (rect.height - displayedH) / 2;
+    }
+    const tx = clientX - rect.left - offsetX;
+    const ty = clientY - rect.top - offsetY;
+    if (tx < 0 || ty < 0 || tx > displayedW || ty > displayedH) return null;
+    return {
+      x: (tx / displayedW) * imgSize.w,
+      y: (ty / displayedH) * imgSize.h,
+    };
+  };
+
+  const handleMapTap = async (e: React.MouseEvent | React.TouchEvent) => {
+    if (tapMode !== "green") return;
+    let cx: number, cy: number;
+    if ("changedTouches" in e) {
+      const t = e.changedTouches[0];
+      cx = t.clientX;
+      cy = t.clientY;
+    } else {
+      cx = (e as React.MouseEvent).clientX;
+      cy = (e as React.MouseEvent).clientY;
+    }
+    const px = tapToImagePx(cx, cy);
+    if (!px) return;
+    if (!course || !hole) return;
+    const updatedHole: Hole = { ...hole, greenPx: px };
+    const updatedCourse: Course = {
+      ...course,
+      holes: course.holes.map((h) => (h.number === hole.number ? updatedHole : h)),
+    };
+    setCourse(updatedCourse);
+    setTapMode(null);
+    try {
+      await saveCourse(updatedCourse);
+    } catch (err) {
+      alert("保存に失敗しました: " + String(err));
+    }
   };
 
   const captureGpsFor = async (which: "tee" | "green") => {
@@ -350,8 +449,18 @@ export default function PlayPage() {
         }}
       >
         {imageUrl ? (
-          <div style={{ position: "relative", width: "100%", height: "100%" }}>
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              height: "100%",
+              cursor: tapMode ? "crosshair" : "default",
+            }}
+            onClick={handleMapTap}
+            onTouchEnd={handleMapTap}
+          >
             <img
+              ref={imgRef}
               src={imageUrl}
               alt=""
               onLoad={(e) =>
@@ -566,7 +675,7 @@ export default function PlayPage() {
         </button>
       </div>
 
-      {/* GPS capture buttons for this hole's tee / green */}
+      {/* Setup action buttons: tee GPS + green tap-on-map */}
       <div
         style={{
           position: "absolute",
@@ -580,7 +689,7 @@ export default function PlayPage() {
       >
         <button
           onClick={() => captureGpsFor("tee")}
-          title="このティー位置を現在地で登録"
+          title="現在地をティーに登録 (GPS)"
           style={{
             width: 64,
             height: 64,
@@ -602,15 +711,26 @@ export default function PlayPage() {
           <span>ティー</span>
         </button>
         <button
-          onClick={() => captureGpsFor("green")}
-          title="このグリーン手前位置を現在地で登録"
+          onClick={() => setTapMode(tapMode === "green" ? null : "green")}
+          title="マップ上でグリーン手前位置をタップして登録"
           style={{
             width: 64,
             height: 64,
             borderRadius: 32,
-            background: hole?.green ? "rgba(233,93,93,0.85)" : "rgba(10,20,16,0.85)",
-            border: `2px solid ${hole?.green ? "#e95d5d" : "var(--accent)"}`,
-            color: "#fff",
+            background:
+              tapMode === "green"
+                ? "rgba(246,198,74,0.95)"
+                : hole?.greenPx
+                  ? "rgba(233,93,93,0.85)"
+                  : "rgba(10,20,16,0.85)",
+            border: `2px solid ${
+              tapMode === "green"
+                ? "#fff"
+                : hole?.greenPx
+                  ? "#e95d5d"
+                  : "var(--accent)"
+            }`,
+            color: tapMode === "green" ? "#1a1208" : "#fff",
             fontSize: 11,
             fontWeight: 800,
             lineHeight: 1.1,
@@ -621,10 +741,166 @@ export default function PlayPage() {
             boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
           }}
         >
-          <span style={{ fontSize: 18 }}>{hole?.green ? "✓" : "📍"}</span>
+          <span style={{ fontSize: 18 }}>
+            {tapMode === "green" ? "✏︎" : hole?.greenPx ? "✓" : "📌"}
+          </span>
           <span>グリーン</span>
         </button>
       </div>
+
+      {/* Tee picker trigger (shows currently selected tee and yardage) */}
+      {hole?.yardages && Object.keys(hole.yardages).length > 0 && (
+        <button
+          onClick={() => setShowTeePicker(true)}
+          style={{
+            position: "absolute",
+            top: "calc(env(safe-area-inset-top) + 230px)",
+            right: 12,
+            background: "rgba(10,20,16,0.85)",
+            border: "1px solid var(--accent)",
+            borderRadius: 18,
+            padding: "8px 14px",
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 700,
+            zIndex: 8,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+          }}
+        >
+          {selectedTee
+            ? `${selectedTee.toUpperCase()}  ${teeYardage}y ▾`
+            : "ティー選択 ▾"}
+        </button>
+      )}
+
+      {/* Tee picker modal */}
+      {showTeePicker && hole?.yardages && (
+        <div
+          onClick={() => setShowTeePicker(false)}
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            zIndex: 30,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--panel)",
+              border: "1px solid var(--line)",
+              borderRadius: 12,
+              padding: 16,
+              maxWidth: 320,
+              width: "100%",
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: 12, textAlign: "center" }}>
+              ティー選択
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {PLAY_TEE_DEFS.map((t) => {
+                const yd = hole.yardages?.[t.key];
+                if (!yd) return null;
+                const isSelected = selectedTee === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setSelectedTee(t.key)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      background: isSelected ? "var(--fairway)" : "var(--panel-2)",
+                      border: `1px solid ${isSelected ? "var(--accent)" : "var(--line)"}`,
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      color: "var(--text)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        background: t.color,
+                        color: t.text,
+                        fontWeight: 800,
+                        fontSize: 11,
+                        padding: "3px 8px",
+                        borderRadius: 4,
+                        minWidth: 50,
+                        textAlign: "center",
+                        border: t.key === "White" ? "1px solid var(--line)" : "none",
+                      }}
+                    >
+                      {t.label}
+                    </span>
+                    <span
+                      style={{ fontWeight: 700, fontSize: 18, flex: 1, textAlign: "right" }}
+                    >
+                      {yd}
+                      <span className="muted" style={{ fontSize: 11, marginLeft: 4 }}>
+                        yd
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setShowTeePicker(false)}
+              style={{
+                marginTop: 12,
+                width: "100%",
+                padding: "10px",
+                background: "transparent",
+                color: "var(--text-dim)",
+                border: "1px solid var(--line)",
+                borderRadius: 8,
+              }}
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tap-mode banner */}
+      {tapMode === "green" && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(env(safe-area-inset-top) + 56px)",
+            left: 12,
+            right: 12,
+            background: "rgba(246,198,74,0.95)",
+            color: "#1a1208",
+            padding: "10px 14px",
+            borderRadius: 8,
+            zIndex: 16,
+            fontWeight: 700,
+            textAlign: "center",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+          }}
+        >
+          マップ上でグリーン手前位置をタップ
+          <button
+            onClick={() => setTapMode(null)}
+            style={{
+              marginLeft: 12,
+              padding: "2px 8px",
+              background: "rgba(0,0,0,0.2)",
+              border: "1px solid rgba(0,0,0,0.4)",
+              borderRadius: 4,
+              fontSize: 12,
+            }}
+          >
+            キャンセル
+          </button>
+        </div>
+      )}
 
       {/* GPS accuracy indicator (bottom) */}
       <div
@@ -655,3 +931,12 @@ export default function PlayPage() {
     </div>
   );
 }
+
+const PLAY_TEE_DEFS: { key: string; label: string; color: string; text: string }[] = [
+  { key: "Black", label: "BLACK", color: "#1a1a1a", text: "#ffffff" },
+  { key: "Blue", label: "BLUE", color: "#3a8fff", text: "#ffffff" },
+  { key: "White", label: "WHITE", color: "#f3f4ec", text: "#1a1a1a" },
+  { key: "Green", label: "GREEN", color: "#3aa55c", text: "#ffffff" },
+  { key: "Gold", label: "GOLD", color: "#d8a23a", text: "#1a1a1a" },
+  { key: "Red", label: "RED", color: "#e95d5d", text: "#ffffff" },
+];

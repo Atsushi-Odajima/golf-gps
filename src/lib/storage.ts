@@ -30,6 +30,8 @@ export interface Round {
   startedAt: number;
   strokes: Record<number, number>;
   tracks: Record<number, TrackPoint[]>;
+  /** Selected tee color name ("Blue"|"White"|"Green"|"Red"|"Black"|"Gold") */
+  selectedTee?: string;
 }
 
 const DB_NAME = "golfgps";
