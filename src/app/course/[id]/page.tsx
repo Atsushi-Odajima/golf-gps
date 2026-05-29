@@ -57,9 +57,9 @@ export default function CoursePage() {
     );
   }
 
-  const handleStart = () => {
+  const startWithHole = (holeNumber: number) => {
     startRound(course.id);
-    router.push(`/course/${course.id}/play`);
+    router.push(`/course/${course.id}/play?startHole=${holeNumber}`);
   };
 
   return (
@@ -73,16 +73,29 @@ export default function CoursePage() {
 
       <div className="page">
         <div className="card">
-          <div className="row spread">
-            <div>
-              <div style={{ fontWeight: 700 }}>スタート前</div>
-              <div className="muted">
-                {course.holes.filter((h) => h.imageDataUrl && h.tee && h.green).length} /{" "}
-                {course.holes.length} ホール完了
-              </div>
-            </div>
-            <button className="btn primary" onClick={handleStart}>
-              ▶ ラウンド開始
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>スタート前</div>
+          <div className="muted" style={{ marginBottom: 12 }}>
+            {course.holes.filter((h) => h.imageDataUrl && h.tee && h.green).length} /{" "}
+            {course.holes.length} ホール完了
+          </div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+            スタート位置を選択してラウンドを開始
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="btn primary"
+              onClick={() => startWithHole(1)}
+              style={{ flex: 1 }}
+            >
+              ▶ OUTから (1H〜)
+            </button>
+            <button
+              className="btn primary"
+              onClick={() => startWithHole(10)}
+              style={{ flex: 1 }}
+              disabled={course.holes.length < 10}
+            >
+              ▶ INから (10H〜)
             </button>
           </div>
         </div>

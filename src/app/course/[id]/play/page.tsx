@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Course,
@@ -18,15 +18,22 @@ import {
 import { useGeolocation } from "@/lib/useGeolocation";
 import { Calibration, haversineMeters, metersToYards, worldToPixel } from "@/lib/geo";
 
+const MAX_TRACK_POINTS_PER_HOLE = 600;
+const MIN_TRACK_DISTANCE_M = 3;
+const MIN_TRACK_INTERVAL_MS = 3000;
+const SAVE_THROTTLE_MS = 5000;
+
 export default function PlayPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [course, setCourse] = useState<Course | null>(null);
   const [round, setRound] = useState<Round | null>(null);
   const [currentHole, setCurrentHole] = useState<number>(1);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
   const [showHolePicker, setShowHolePicker] = useState(false);
+  const lastSaveAtRef = useRef<number>(0);
 
   const { fix, error: gpsError } = useGeolocation(true);
 
@@ -42,12 +49,21 @@ export default function PlayPage() {
         r = startRound(c.id);
       }
       setRound(r);
-      const firstReady = c.holes.find((h) => h.tee && h.green);
-      setCurrentHole(firstReady?.number ?? 1);
+      // Priority: explicit ?startHole query → first calibrated hole → 1
+      const startHoleParam = searchParams?.get("startHole");
+      const parsed = startHoleParam ? parseInt(startHoleParam, 10) : NaN;
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 36) {
+        setCurrentHole(parsed);
+      } else {
+        const firstReady = c.holes.find((h) => h.tee && h.green);
+        setCurrentHole(firstReady?.number ?? 1);
+      }
     })();
     return () => {
       cancelled = true;
     };
+    // searchParams intentionally excluded to avoid resetting when URL changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   // Load image when hole changes
@@ -60,30 +76,60 @@ export default function PlayPage() {
     });
   }, [course, currentHole]);
 
-  // Append GPS fixes to the track for the current hole
+  // Append GPS fixes to the track for the current hole.
+  // Aggressively throttled: only add a point every MIN_TRACK_INTERVAL_MS / MIN_TRACK_DISTANCE_M.
+  // localStorage writes are further throttled to SAVE_THROTTLE_MS to keep the main thread free.
   useEffect(() => {
     if (!fix || !round) return;
     setRound((prev) => {
       if (!prev) return prev;
       const existing = prev.tracks[currentHole] ?? [];
       const last = existing[existing.length - 1];
-      // de-duplicate very close fixes (<2m, <1s apart)
       if (
         last &&
-        fix.timestamp - last.t < 1000 &&
-        haversineMeters({ lat: last.lat, lng: last.lng }, fix) < 2
+        fix.timestamp - last.t < MIN_TRACK_INTERVAL_MS &&
+        haversineMeters({ lat: last.lat, lng: last.lng }, fix) < MIN_TRACK_DISTANCE_M
       ) {
         return prev;
       }
-      const newTrack = [...existing, { lat: fix.lat, lng: fix.lng, t: fix.timestamp }];
+      let newTrack = [
+        ...existing,
+        { lat: fix.lat, lng: fix.lng, t: fix.timestamp },
+      ];
+      if (newTrack.length > MAX_TRACK_POINTS_PER_HOLE) {
+        newTrack = newTrack.slice(newTrack.length - MAX_TRACK_POINTS_PER_HOLE);
+      }
       const next: Round = {
         ...prev,
         tracks: { ...prev.tracks, [currentHole]: newTrack },
       };
-      saveActiveRound(next);
+      const now = Date.now();
+      if (now - lastSaveAtRef.current > SAVE_THROTTLE_MS) {
+        lastSaveAtRef.current = now;
+        try {
+          saveActiveRound(next);
+        } catch {
+          // ignore - storage pressure shouldn't crash the round
+        }
+      }
       return next;
     });
   }, [fix, currentHole, round?.courseId]);
+
+  // Make sure the round is always persisted when leaving the page
+  useEffect(() => {
+    return () => {
+      const r = round;
+      if (r) {
+        try {
+          saveActiveRound(r);
+        } catch {
+          // ignore
+        }
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const hole: Hole | null = useMemo(
     () => course?.holes.find((h) => h.number === currentHole) ?? null,
@@ -109,6 +155,19 @@ export default function PlayPage() {
     if (!fix || !hole?.tee) return null;
     return metersToYards(haversineMeters(fix, hole.tee));
   }, [fix, hole?.tee]);
+
+  const trackPoints = useMemo(
+    () => round?.tracks[currentHole] ?? [],
+    [round, currentHole],
+  );
+
+  const trackPx = useMemo(
+    () =>
+      calibration
+        ? trackPoints.map((p) => worldToPixel(calibration, { lat: p.lat, lng: p.lng }))
+        : [],
+    [calibration, trackPoints],
+  );
 
   const strokes = round?.strokes[currentHole] ?? 0;
   const setStrokes = (delta: number) => {
@@ -142,10 +201,6 @@ export default function PlayPage() {
   }
 
   const playablePx = calibration && fix ? worldToPixel(calibration, fix) : null;
-  const trackPoints = round.tracks[currentHole] ?? [];
-  const trackPx = calibration
-    ? trackPoints.map((p) => worldToPixel(calibration, { lat: p.lat, lng: p.lng }))
-    : [];
 
   const totalScore = Object.values(round.strokes).reduce((a, b) => a + b, 0);
   const totalPar = course.holes.reduce((a, h) => a + h.par, 0);
@@ -198,43 +253,62 @@ export default function PlayPage() {
       </div>
 
       {showHolePicker && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(env(safe-area-inset-top) + 56px)",
-            left: 12,
-            right: 12,
-            background: "rgba(10,20,16,0.95)",
-            border: "1px solid var(--line)",
-            borderRadius: 12,
-            padding: 12,
-            zIndex: 15,
-            maxHeight: "60vh",
-            overflowY: "auto",
-          }}
-        >
-          <div className="grid-holes">
-            {course.holes.map((h) => {
-              const ready = !!(h.tee && h.green);
-              return (
-                <button
-                  key={h.number}
-                  onClick={() => ready && goToHole(h.number)}
-                  disabled={!ready}
-                  className={`hole-chip ${ready ? "has-image" : ""}`}
-                  style={{
-                    background: h.number === currentHole ? "var(--fairway)" : undefined,
-                  }}
-                >
-                  {h.number}H
-                  <span className="par">
-                    Par {h.par} {round.strokes[h.number] ? `/ ${round.strokes[h.number]}` : ""}
-                  </span>
-                </button>
-              );
-            })}
+        <>
+          <div
+            onClick={() => setShowHolePicker(false)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 14,
+              background: "rgba(0,0,0,0.3)",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: "calc(env(safe-area-inset-top) + 56px)",
+              left: 12,
+              right: 12,
+              background: "rgba(10,20,16,0.97)",
+              border: "1px solid var(--line)",
+              borderRadius: 12,
+              padding: 12,
+              zIndex: 15,
+              maxHeight: "70vh",
+              overflowY: "auto",
+            }}
+          >
+            <div className="grid-holes">
+              {course.holes.map((h) => {
+                const ready = !!(h.tee && h.green);
+                const isCurrent = h.number === currentHole;
+                return (
+                  <button
+                    key={h.number}
+                    onClick={() => goToHole(h.number)}
+                    className={`hole-chip ${ready ? "has-image" : ""}`}
+                    style={{
+                      background: isCurrent ? "var(--fairway)" : undefined,
+                      borderColor: isCurrent ? "var(--accent)" : undefined,
+                      opacity: ready ? 1 : 0.75,
+                    }}
+                  >
+                    {h.number}H
+                    <span className="par">
+                      Par {h.par} {round.strokes[h.number] ? `/ ${round.strokes[h.number]}` : ""}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div
+              className="muted"
+              style={{ fontSize: 11, marginTop: 10, textAlign: "center" }}
+            >
+              背景タップで閉じる
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Map area */}
