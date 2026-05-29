@@ -183,7 +183,7 @@ export default function HomePage() {
   return (
     <>
       <div className="appbar">
-        <h1>コース一覧</h1>
+        <div style={{ flex: 1 }} />
         <button className="btn" onClick={handleImportUrl} title="URLからインポート">
           🔗URL
         </button>
@@ -316,9 +316,9 @@ export default function HomePage() {
           )}
         </div>
 
-        <h2 style={{ fontSize: 14, color: "var(--text-dim)", margin: "16px 4px 8px" }}>
+        <h1 style={{ fontSize: 20, margin: "20px 4px 10px", fontWeight: 700 }}>
           コース一覧
-        </h2>
+        </h1>
 
         {courses.length === 0 && (
           <div className="card muted">
