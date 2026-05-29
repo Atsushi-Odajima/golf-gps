@@ -192,9 +192,22 @@ function parseCourse(html: string, sourceUrl: string): ImportedCourse {
     if (!holeMatch) return;
     const number = parseInt(holeMatch[1], 10);
     if (number < 1 || number > 36) return;
+    const holeIdx = holeMatch.index ?? 0;
 
-    const parMatch = text.match(/PAR\s*[:：]?\s*(\d)/i);
-    const par = parMatch ? parseInt(parMatch[1], 10) : 4;
+    // PAR is restricted to single digit 3-6 (NOT followed by another digit)
+    // so we don't match the course total "PAR 72". Pick the one CLOSEST to
+    // the HOLE marker in text position.
+    let par = 4;
+    let bestParDist = Infinity;
+    const parRegex = /PAR\s*[:：]?\s*([3-6])(?!\d)/gi;
+    let pm: RegExpExecArray | null;
+    while ((pm = parRegex.exec(text)) !== null) {
+      const d = Math.abs(pm.index - holeIdx);
+      if (d < bestParDist) {
+        bestParDist = d;
+        par = parseInt(pm[1], 10);
+      }
+    }
 
     const candidates = collectImageCandidates($el, $);
     const imageUrl = bestImageUrl(candidates, sourceUrl);

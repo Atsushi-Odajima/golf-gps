@@ -13,6 +13,7 @@ import {
   imageKey,
   loadImage,
   saveActiveRound,
+  saveCourse,
   startRound,
 } from "@/lib/storage";
 import { useGeolocation } from "@/lib/useGeolocation";
@@ -183,6 +184,33 @@ export default function PlayPage() {
       saveActiveRound(next);
       return next;
     });
+  };
+
+  const captureGpsFor = async (which: "tee" | "green") => {
+    if (!fix) {
+      alert("GPSがまだ取得できていません。少し待ってからお試しください。");
+      return;
+    }
+    if (!course || !hole) return;
+    const wasSet = which === "tee" ? hole.tee : hole.green;
+    const label = which === "tee" ? "ティー" : "グリーン手前";
+    if (wasSet && !confirm(`${label}位置は既に登録済みです。\n現在地で上書きしますか？`)) {
+      return;
+    }
+    const updatedHole: Hole = {
+      ...hole,
+      [which]: { lat: fix.lat, lng: fix.lng },
+    };
+    const updatedCourse: Course = {
+      ...course,
+      holes: course.holes.map((h) => (h.number === hole.number ? updatedHole : h)),
+    };
+    setCourse(updatedCourse);
+    try {
+      await saveCourse(updatedCourse);
+    } catch (e) {
+      alert("保存に失敗しました: " + String(e));
+    }
   };
 
   const goToHole = (n: number) => {
@@ -535,6 +563,66 @@ export default function PlayPage() {
           }}
         >
           －
+        </button>
+      </div>
+
+      {/* GPS capture buttons for this hole's tee / green */}
+      <div
+        style={{
+          position: "absolute",
+          right: 12,
+          bottom: "calc(env(safe-area-inset-bottom) + 56px)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          zIndex: 8,
+        }}
+      >
+        <button
+          onClick={() => captureGpsFor("tee")}
+          title="このティー位置を現在地で登録"
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            background: hole?.tee ? "rgba(58,165,92,0.85)" : "rgba(10,20,16,0.85)",
+            border: `2px solid ${hole?.tee ? "#3aa55c" : "var(--accent)"}`,
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: 800,
+            lineHeight: 1.1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+          }}
+        >
+          <span style={{ fontSize: 18 }}>{hole?.tee ? "✓" : "📍"}</span>
+          <span>ティー</span>
+        </button>
+        <button
+          onClick={() => captureGpsFor("green")}
+          title="このグリーン手前位置を現在地で登録"
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            background: hole?.green ? "rgba(233,93,93,0.85)" : "rgba(10,20,16,0.85)",
+            border: `2px solid ${hole?.green ? "#e95d5d" : "var(--accent)"}`,
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: 800,
+            lineHeight: 1.1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+          }}
+        >
+          <span style={{ fontSize: 18 }}>{hole?.green ? "✓" : "📍"}</span>
+          <span>グリーン</span>
         </button>
       </div>
 
