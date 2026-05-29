@@ -57,9 +57,6 @@ export default function CoursePage() {
     );
   }
 
-  const ready = course.holes.every((h) => h.imageDataUrl && h.tee && h.green);
-  const someReady = course.holes.some((h) => h.imageDataUrl && h.tee && h.green);
-
   const handleStart = () => {
     startRound(course.id);
     router.push(`/course/${course.id}/play`);
@@ -78,14 +75,14 @@ export default function CoursePage() {
         <div className="card">
           <div className="row spread">
             <div>
-              <div style={{ fontWeight: 700 }}>セットアップ状況</div>
+              <div style={{ fontWeight: 700 }}>スタート前</div>
               <div className="muted">
                 {course.holes.filter((h) => h.imageDataUrl && h.tee && h.green).length} /{" "}
                 {course.holes.length} ホール完了
               </div>
             </div>
             <button className="btn primary" onClick={handleStart}>
-              {ready ? "▶ ラウンド開始" : someReady ? "▶ 設定済から開始" : "▶ デモ開始"}
+              ▶ ラウンド開始
             </button>
           </div>
         </div>
