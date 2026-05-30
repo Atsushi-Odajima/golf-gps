@@ -983,38 +983,47 @@ export default function PlayPage() {
       {tapMode === "green" && (
         <div
           style={{
+            // Bottom-centered, content width so it doesn't cover the map's upper
+            // portion where the green is drawn. Sits above the GPS indicator and
+            // between the left (Score+End) and right (Tee/Green) action stacks.
             position: "absolute",
-            top: "calc(env(safe-area-inset-top) + 92px)",
-            left: 12,
-            right: 12,
-            background: "rgba(246,198,74,0.78)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            bottom: "calc(env(safe-area-inset-bottom) + 50px)",
+            background: "rgba(246,198,74,0.95)",
             color: "#1a1208",
-            padding: "8px 12px",
-            borderRadius: 8,
+            padding: "8px 14px",
+            borderRadius: 999,
             zIndex: 16,
             fontWeight: 700,
             fontSize: 13,
-            textAlign: "center",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-            // Make the banner click-through so the map underneath stays tappable.
-            // The cancel button below opts back in via pointerEvents:"auto".
-            pointerEvents: "none",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            whiteSpace: "nowrap",
+            maxWidth: "calc(100vw - 220px)",
           }}
         >
-          マップ上でグリーン手前位置をタップ
+          <span>📌 グリーンをタップ</span>
           <button
             onClick={() => setTapMode(null)}
             style={{
-              marginLeft: 12,
-              padding: "2px 10px",
+              width: 26,
+              height: 26,
+              borderRadius: 13,
+              padding: 0,
               background: "rgba(0,0,0,0.25)",
               border: "1px solid rgba(0,0,0,0.45)",
-              borderRadius: 4,
-              fontSize: 12,
-              pointerEvents: "auto",
+              fontSize: 14,
+              lineHeight: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#1a1208",
             }}
           >
-            キャンセル
+            ×
           </button>
         </div>
       )}
