@@ -400,32 +400,39 @@ export default function PlayPage() {
 
   return (
     <div style={{ position: "relative", height: "100dvh", overflow: "hidden", background: "#000" }}>
-      {/* Top bar */}
+      {/* Back + hole picker — anchored to top-LEFT, below the brand badge */}
       <div
         style={{
           position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          padding: "calc(env(safe-area-inset-top) + 8px) 12px 8px 150px",
-          background: "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%)",
-          zIndex: 10,
+          top: "calc(env(safe-area-inset-top) + 42px)",
+          left: "calc(env(safe-area-inset-left) + 8px)",
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          gap: 6,
+          zIndex: 10,
         }}
       >
-        <Link href={`/course/${params.id}`} className="btn ghost" style={{ padding: "6px 10px" }}>
+        <Link
+          href={`/course/${params.id}`}
+          className="btn"
+          style={{
+            background: "rgba(0,0,0,0.65)",
+            padding: "8px 14px",
+            border: "1px solid rgba(255,255,255,0.15)",
+          }}
+        >
           ‹
         </Link>
         <button
           onClick={() => setShowHolePicker((s) => !s)}
           className="btn"
-          style={{ background: "rgba(0,0,0,0.5)" }}
+          style={{
+            background: "rgba(0,0,0,0.65)",
+            border: "1px solid rgba(255,255,255,0.15)",
+          }}
         >
           {currentHole}H ・ Par {hole?.par ?? "-"} ▾
         </button>
-        <div style={{ flex: 1 }} />
       </div>
 
       {/* Score + Finish — bottom-left (above GPS indicator, below stroke counter) */}
@@ -485,7 +492,7 @@ export default function PlayPage() {
           <div
             style={{
               position: "absolute",
-              top: "calc(env(safe-area-inset-top) + 56px)",
+              top: "calc(env(safe-area-inset-top) + 92px)",
               left: 12,
               right: 12,
               background: "rgba(10,20,16,0.97)",
@@ -977,7 +984,7 @@ export default function PlayPage() {
         <div
           style={{
             position: "absolute",
-            top: "calc(env(safe-area-inset-top) + 56px)",
+            top: "calc(env(safe-area-inset-top) + 92px)",
             left: 12,
             right: 12,
             background: "rgba(246,198,74,0.95)",
