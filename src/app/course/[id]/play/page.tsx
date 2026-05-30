@@ -987,14 +987,18 @@ export default function PlayPage() {
             top: "calc(env(safe-area-inset-top) + 92px)",
             left: 12,
             right: 12,
-            background: "rgba(246,198,74,0.95)",
+            background: "rgba(246,198,74,0.78)",
             color: "#1a1208",
-            padding: "10px 14px",
+            padding: "8px 12px",
             borderRadius: 8,
             zIndex: 16,
             fontWeight: 700,
+            fontSize: 13,
             textAlign: "center",
             boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+            // Make the banner click-through so the map underneath stays tappable.
+            // The cancel button below opts back in via pointerEvents:"auto".
+            pointerEvents: "none",
           }}
         >
           マップ上でグリーン手前位置をタップ
@@ -1002,11 +1006,12 @@ export default function PlayPage() {
             onClick={() => setTapMode(null)}
             style={{
               marginLeft: 12,
-              padding: "2px 8px",
-              background: "rgba(0,0,0,0.2)",
-              border: "1px solid rgba(0,0,0,0.4)",
+              padding: "2px 10px",
+              background: "rgba(0,0,0,0.25)",
+              border: "1px solid rgba(0,0,0,0.45)",
               borderRadius: 4,
               fontSize: 12,
+              pointerEvents: "auto",
             }}
           >
             キャンセル
