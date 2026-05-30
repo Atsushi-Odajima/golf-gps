@@ -17,7 +17,15 @@ import {
   startRound,
 } from "@/lib/storage";
 import { useGeolocation } from "@/lib/useGeolocation";
-import { Calibration, haversineMeters, metersToYards, worldToPixel } from "@/lib/geo";
+import { useCompass } from "@/lib/useCompass";
+import {
+  Calibration,
+  haversineMeters,
+  metersToYards,
+  projectLatLng,
+  worldToPixel,
+  yardsToMeters,
+} from "@/lib/geo";
 
 const MAX_TRACK_POINTS_PER_HOLE = 600;
 const MIN_TRACK_DISTANCE_M = 3;
@@ -40,6 +48,7 @@ export default function PlayPage() {
   const imgRef = useRef<HTMLImageElement | null>(null);
 
   const { fix, error: gpsError } = useGeolocation(true);
+  const compass = useCompass(true);
 
   // Init course + round
   useEffect(() => {
@@ -156,27 +165,36 @@ export default function PlayPage() {
     : null;
 
   /**
-   * Distance to green = (selected tee yardage) - (yards walked from tee).
+   * Derived green world coords:
+   *   from tee GPS + compass bearing (recorded at tee setup) + selected yardage.
    *
-   * Walked distance is straight-line GPS distance from the saved tee position.
-   * This assumes the player generally walks toward the green; it doesn't account
-   * for direction so wandering sideways still subtracts from the remaining yards.
-   * Acceptable trade-off for the simplicity the user asked for.
-   *
-   * Falls back to direct haversine to green GPS if (legacy) green is set.
+   * Once these three are known we can compute the green's real lat/lng and then
+   * use a normal haversine distance — which correctly handles sideways or
+   * backward movement (e.g., recovery shots from trouble).
    */
+  const derivedGreen = useMemo(() => {
+    if (!hole?.tee || hole.bearingFromTeeDeg == null || teeYardage == null) return null;
+    return projectLatLng(hole.tee, hole.bearingFromTeeDeg, yardsToMeters(teeYardage));
+  }, [hole?.tee, hole?.bearingFromTeeDeg, teeYardage]);
+
   const yardsToGreen = useMemo(() => {
     if (!fix) return null;
+    // Preferred: derived green from bearing
+    if (derivedGreen) {
+      return metersToYards(haversineMeters(fix, derivedGreen));
+    }
+    // Fallback: legacy explicit green GPS
+    if (hole?.green) {
+      return metersToYards(haversineMeters(fix, hole.green));
+    }
+    // Last resort: linear "yardage - walked from tee"
     if (teeYardage != null && hole?.tee) {
       const walkedM = haversineMeters(fix, hole.tee);
       const walkedY = metersToYards(walkedM);
       return Math.max(0, teeYardage - walkedY);
     }
-    if (hole?.green) {
-      return metersToYards(haversineMeters(fix, hole.green));
-    }
     return null;
-  }, [fix, hole, teeYardage]);
+  }, [fix, hole, teeYardage, derivedGreen]);
 
   const yardsToTee = useMemo(() => {
     if (!fix || !hole?.tee) return null;
@@ -285,20 +303,47 @@ export default function PlayPage() {
     }
   };
 
-  const captureGpsFor = async (which: "tee" | "green") => {
+  const captureTee = async () => {
     if (!fix) {
       alert("GPSがまだ取得できていません。少し待ってからお試しください。");
       return;
     }
     if (!course || !hole) return;
-    const wasSet = which === "tee" ? hole.tee : hole.green;
-    const label = which === "tee" ? "ティー" : "グリーン手前";
-    if (wasSet && !confirm(`${label}位置は既に登録済みです。\n現在地で上書きしますか？`)) {
+    if (hole.tee && !confirm("ティー位置は既に登録済みです。\n現在地で上書きしますか？")) {
       return;
     }
+
+    // Compass permission: iOS Safari requires explicit user-gesture-initiated request
+    let perm = compass.permission;
+    if (perm === "unknown") {
+      perm = (await compass.requestPermission()) ? "granted" : "denied";
+    }
+
+    let bearing: number | null = null;
+    if (perm === "granted") {
+      // Compass takes a brief moment to start emitting after permission grant
+      bearing = compass.heading;
+      if (bearing == null) {
+        await new Promise((r) => setTimeout(r, 600));
+        bearing = compass.heading;
+      }
+      if (bearing == null) {
+        const tryAnyway = confirm(
+          "コンパスから方位を取得できませんでした。\nGPSのみで登録しますか？\n（ミスショット時の距離が不正確になります）",
+        );
+        if (!tryAnyway) return;
+      }
+    } else {
+      const tryAnyway = confirm(
+        "コンパス許可が得られませんでした。\nGPSのみで登録しますか？\n（ミスショット時の距離が不正確になります）",
+      );
+      if (!tryAnyway) return;
+    }
+
     const updatedHole: Hole = {
       ...hole,
-      [which]: { lat: fix.lat, lng: fix.lng },
+      tee: { lat: fix.lat, lng: fix.lng },
+      bearingFromTeeDeg: bearing ?? hole.bearingFromTeeDeg,
     };
     const updatedCourse: Course = {
       ...course,
@@ -307,6 +352,14 @@ export default function PlayPage() {
     setCourse(updatedCourse);
     try {
       await saveCourse(updatedCourse);
+      if (bearing != null) {
+        // Brief, non-blocking confirmation. (alert() blocks; toast would be nicer but
+        // alert is simplest and ensures the user sees the bearing was captured.)
+        setTimeout(
+          () => alert(`ティー登録完了\n方位: ${Math.round(bearing!)}° (グリーン方向)`),
+          0,
+        );
+      }
     } catch (e) {
       alert("保存に失敗しました: " + String(e));
     }
@@ -688,14 +741,25 @@ export default function PlayPage() {
         }}
       >
         <button
-          onClick={() => captureGpsFor("tee")}
-          title="現在地をティーに登録 (GPS)"
+          onClick={captureTee}
+          title="グリーン方向を向いて現在地をティーに登録 (GPS+コンパス)"
           style={{
             width: 64,
             height: 64,
             borderRadius: 32,
-            background: hole?.tee ? "rgba(58,165,92,0.85)" : "rgba(10,20,16,0.85)",
-            border: `2px solid ${hole?.tee ? "#3aa55c" : "var(--accent)"}`,
+            background:
+              hole?.tee && hole?.bearingFromTeeDeg != null
+                ? "rgba(58,165,92,0.85)"
+                : hole?.tee
+                  ? "rgba(232,155,42,0.85)"
+                  : "rgba(10,20,16,0.85)",
+            border: `2px solid ${
+              hole?.tee && hole?.bearingFromTeeDeg != null
+                ? "#3aa55c"
+                : hole?.tee
+                  ? "var(--accent-2)"
+                  : "var(--accent)"
+            }`,
             color: "#fff",
             fontSize: 11,
             fontWeight: 800,
@@ -707,7 +771,9 @@ export default function PlayPage() {
             boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
           }}
         >
-          <span style={{ fontSize: 18 }}>{hole?.tee ? "✓" : "📍"}</span>
+          <span style={{ fontSize: 18 }}>
+            {hole?.tee && hole?.bearingFromTeeDeg != null ? "✓" : hole?.tee ? "⚠" : "📍"}
+          </span>
           <span>ティー</span>
         </button>
         <button

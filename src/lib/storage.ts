@@ -11,6 +11,8 @@ export interface Hole {
   teePx: Pixel | null;
   greenPx: Pixel | null;
   yardages?: Record<string, number>;
+  /** Compass bearing in degrees (0=N, 90=E) recorded when capturing the tee */
+  bearingFromTeeDeg?: number;
 }
 
 export interface Course {

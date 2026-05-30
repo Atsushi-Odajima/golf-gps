@@ -15,6 +15,10 @@ export function metersToYards(m: number): number {
   return m / METERS_PER_YARD;
 }
 
+export function yardsToMeters(y: number): number {
+  return y * METERS_PER_YARD;
+}
+
 export function haversineMeters(a: LatLng, b: LatLng): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -26,6 +30,32 @@ export function haversineMeters(a: LatLng, b: LatLng): number {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Destination point from `start` traveling `distanceMeters` along compass `bearingDeg`
+ * (0° = north, 90° = east). Standard great-circle "direct" formula.
+ */
+export function projectLatLng(
+  start: LatLng,
+  bearingDeg: number,
+  distanceMeters: number,
+): LatLng {
+  const R = EARTH_RADIUS_M;
+  const delta = distanceMeters / R;
+  const theta = (bearingDeg * Math.PI) / 180;
+  const phi1 = (start.lat * Math.PI) / 180;
+  const lambda1 = (start.lng * Math.PI) / 180;
+  const sinPhi2 =
+    Math.sin(phi1) * Math.cos(delta) + Math.cos(phi1) * Math.sin(delta) * Math.cos(theta);
+  const phi2 = Math.asin(sinPhi2);
+  const y = Math.sin(theta) * Math.sin(delta) * Math.cos(phi1);
+  const x = Math.cos(delta) - Math.sin(phi1) * sinPhi2;
+  const lambda2 = lambda1 + Math.atan2(y, x);
+  return {
+    lat: (phi2 * 180) / Math.PI,
+    lng: (((lambda2 * 180) / Math.PI + 540) % 360) - 180,
+  };
 }
 
 /**
