@@ -426,20 +426,46 @@ export default function PlayPage() {
           {currentHole}H ・ Par {hole?.par ?? "-"} ▾
         </button>
         <div style={{ flex: 1 }} />
+      </div>
+
+      {/* Score + Finish — bottom-left (above GPS indicator, below stroke counter) */}
+      <div
+        style={{
+          position: "absolute",
+          left: 12,
+          bottom: "calc(env(safe-area-inset-bottom) + 56px)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          zIndex: 8,
+          minWidth: 90,
+        }}
+      >
         <div
           style={{
-            background: "rgba(0,0,0,0.5)",
+            background: "rgba(10,20,16,0.85)",
+            border: "1px solid var(--line)",
             padding: "6px 10px",
             borderRadius: 8,
             fontWeight: 700,
+            fontSize: 14,
+            color: "#fff",
+            textAlign: "center",
           }}
         >
           {totalScore} / {totalPar}
         </div>
         <button
-          className="btn"
           onClick={handleFinish}
-          style={{ background: "rgba(0,0,0,0.5)", color: "var(--danger)" }}
+          style={{
+            background: "rgba(10,20,16,0.85)",
+            color: "var(--danger)",
+            border: "1px solid var(--danger)",
+            padding: "6px 10px",
+            borderRadius: 8,
+            fontWeight: 700,
+            fontSize: 13,
+          }}
         >
           終了
         </button>
