@@ -33,6 +33,22 @@ export function haversineMeters(a: LatLng, b: LatLng): number {
 }
 
 /**
+ * Initial bearing (forward azimuth) in degrees from `start` to `end`.
+ * 0 = north, 90 = east, clockwise positive.
+ */
+export function bearingFromTo(start: LatLng, end: LatLng): number {
+  const phi1 = (start.lat * Math.PI) / 180;
+  const phi2 = (end.lat * Math.PI) / 180;
+  const dLambda = ((end.lng - start.lng) * Math.PI) / 180;
+  const y = Math.sin(dLambda) * Math.cos(phi2);
+  const x =
+    Math.cos(phi1) * Math.sin(phi2) -
+    Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
+  const theta = Math.atan2(y, x);
+  return ((theta * 180) / Math.PI + 360) % 360;
+}
+
+/**
  * Destination point from `start` traveling `distanceMeters` along compass `bearingDeg`
  * (0° = north, 90° = east). Standard great-circle "direct" formula.
  */

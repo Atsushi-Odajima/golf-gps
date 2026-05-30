@@ -17,8 +17,8 @@ import {
   startRound,
 } from "@/lib/storage";
 import { useGeolocation } from "@/lib/useGeolocation";
-import { useCompass } from "@/lib/useCompass";
 import {
+  bearingFromTo,
   Calibration,
   haversineMeters,
   metersToYards,
@@ -48,7 +48,6 @@ export default function PlayPage() {
   const imgRef = useRef<HTMLImageElement | null>(null);
 
   const { fix, error: gpsError } = useGeolocation(true);
-  const compass = useCompass(true);
 
   // Init course + round
   useEffect(() => {
@@ -148,6 +147,54 @@ export default function PlayPage() {
     () => course?.holes.find((h) => h.number === currentHole) ?? null,
     [course, currentHole],
   );
+
+  /**
+   * Auto-detect tee→green bearing from the player's GPS track.
+   *
+   * Once we have a track point at least AUTO_BEARING_MIN_DIST_M meters away from
+   * the captured tee, we assume the player walked roughly toward the green and
+   * lock in that bearing. The derived green world coords then drive a normal
+   * haversine distance calculation, which correctly handles sideways/backward
+   * movement after the initial commit is made.
+   */
+  const AUTO_BEARING_MIN_DIST_M = 30;
+  useEffect(() => {
+    if (!course || !hole || !hole.tee) return;
+    if (hole.bearingFromTeeDeg != null) return; // already locked
+    const points = round?.tracks[currentHole] ?? [];
+    if (points.length === 0) return;
+
+    let farthest = 0;
+    let farthestPoint: { lat: number; lng: number } | null = null;
+    for (const p of points) {
+      const d = haversineMeters({ lat: p.lat, lng: p.lng }, hole.tee);
+      if (d > farthest) {
+        farthest = d;
+        farthestPoint = { lat: p.lat, lng: p.lng };
+      }
+    }
+    if (!farthestPoint || farthest < AUTO_BEARING_MIN_DIST_M) return;
+
+    const detected = bearingFromTo(hole.tee, farthestPoint);
+    const updatedCourse: Course = {
+      ...course,
+      holes: course.holes.map((h) =>
+        h.number === hole.number ? { ...h, bearingFromTeeDeg: detected } : h,
+      ),
+    };
+    setCourse(updatedCourse);
+    saveCourse(updatedCourse).catch(() => {
+      // non-critical
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    course?.id,
+    hole?.number,
+    hole?.tee?.lat,
+    hole?.tee?.lng,
+    hole?.bearingFromTeeDeg,
+    round?.tracks[currentHole]?.length,
+  ]);
 
   const calibration: Calibration | null = useMemo(() => {
     if (!hole || !hole.tee || !hole.green || !hole.teePx || !hole.greenPx) return null;
@@ -312,38 +359,12 @@ export default function PlayPage() {
     if (hole.tee && !confirm("ティー位置は既に登録済みです。\n現在地で上書きしますか？")) {
       return;
     }
-
-    // Compass permission: iOS Safari requires explicit user-gesture-initiated request
-    let perm = compass.permission;
-    if (perm === "unknown") {
-      perm = (await compass.requestPermission()) ? "granted" : "denied";
-    }
-
-    let bearing: number | null = null;
-    if (perm === "granted") {
-      // Compass takes a brief moment to start emitting after permission grant
-      bearing = compass.heading;
-      if (bearing == null) {
-        await new Promise((r) => setTimeout(r, 600));
-        bearing = compass.heading;
-      }
-      if (bearing == null) {
-        const tryAnyway = confirm(
-          "コンパスから方位を取得できませんでした。\nGPSのみで登録しますか？\n（ミスショット時の距離が不正確になります）",
-        );
-        if (!tryAnyway) return;
-      }
-    } else {
-      const tryAnyway = confirm(
-        "コンパス許可が得られませんでした。\nGPSのみで登録しますか？\n（ミスショット時の距離が不正確になります）",
-      );
-      if (!tryAnyway) return;
-    }
-
+    // Re-capturing the tee invalidates the previously auto-detected bearing
+    // (player may be on a different tee box this round).
     const updatedHole: Hole = {
       ...hole,
       tee: { lat: fix.lat, lng: fix.lng },
-      bearingFromTeeDeg: bearing ?? hole.bearingFromTeeDeg,
+      bearingFromTeeDeg: undefined,
     };
     const updatedCourse: Course = {
       ...course,
@@ -352,14 +373,6 @@ export default function PlayPage() {
     setCourse(updatedCourse);
     try {
       await saveCourse(updatedCourse);
-      if (bearing != null) {
-        // Brief, non-blocking confirmation. (alert() blocks; toast would be nicer but
-        // alert is simplest and ensures the user sees the bearing was captured.)
-        setTimeout(
-          () => alert(`ティー登録完了\n方位: ${Math.round(bearing!)}° (グリーン方向)`),
-          0,
-        );
-      }
     } catch (e) {
       alert("保存に失敗しました: " + String(e));
     }
@@ -742,7 +755,7 @@ export default function PlayPage() {
       >
         <button
           onClick={captureTee}
-          title="グリーン方向を向いて現在地をティーに登録 (GPS+コンパス)"
+          title="現在地をティーに登録 (歩行で方位を自動補正)"
           style={{
             width: 64,
             height: 64,
@@ -772,7 +785,7 @@ export default function PlayPage() {
           }}
         >
           <span style={{ fontSize: 18 }}>
-            {hole?.tee && hole?.bearingFromTeeDeg != null ? "✓" : hole?.tee ? "⚠" : "📍"}
+            {hole?.tee && hole?.bearingFromTeeDeg != null ? "✓" : hole?.tee ? "⏳" : "📍"}
           </span>
           <span>ティー</span>
         </button>
