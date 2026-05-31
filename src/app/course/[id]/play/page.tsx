@@ -407,17 +407,13 @@ export default function PlayPage() {
   // selected. Both are needed before distance/positioning makes sense.
   const isHoleStarted = !!hole?.tee && !!selectedTee;
 
-  /**
-   * Pixel position to render the player silhouette at.
-   * - Preferred: the GPS-derived position once calibration is complete.
-   * - Otherwise: pin the silhouette to the tee image position so the user
-   *   gets immediate visual feedback the moment they press ホールスタート.
-   */
-  const playerMarkerPx = useMemo(() => {
-    if (playablePx) return playablePx;
-    if (isHoleStarted && effectiveTeePx) return effectiveTeePx;
-    return null;
-  }, [playablePx, isHoleStarted, effectiveTeePx]);
+  // Pixel position to render the player silhouette at.
+  // - Preferred: the GPS-derived position once calibration is complete.
+  // - Otherwise: pin the silhouette to the tee image position so the user
+  //   gets immediate visual feedback the moment they press ホールスタート.
+  // (Plain expression, not useMemo — useMemo here would sit after the early
+  //  return above and violate rules-of-hooks.)
+  const playerMarkerPx = playablePx ?? (isHoleStarted && effectiveTeePx ? effectiveTeePx : null);
 
   const totalScore = Object.values(round.strokes).reduce((a, b) => a + b, 0);
   const totalPar = course.holes.reduce((a, h) => a + h.par, 0);
