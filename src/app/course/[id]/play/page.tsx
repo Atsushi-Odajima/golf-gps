@@ -403,6 +403,22 @@ export default function PlayPage() {
 
   const playablePx = calibration && fix ? worldToPixel(calibration, fix) : null;
 
+  // The hole is "started" once we have a tee GPS *and* a tee color (yardage)
+  // selected. Both are needed before distance/positioning makes sense.
+  const isHoleStarted = !!hole?.tee && !!selectedTee;
+
+  /**
+   * Pixel position to render the player silhouette at.
+   * - Preferred: the GPS-derived position once calibration is complete.
+   * - Otherwise: pin the silhouette to the tee image position so the user
+   *   gets immediate visual feedback the moment they press ホールスタート.
+   */
+  const playerMarkerPx = useMemo(() => {
+    if (playablePx) return playablePx;
+    if (isHoleStarted && effectiveTeePx) return effectiveTeePx;
+    return null;
+  }, [playablePx, isHoleStarted, effectiveTeePx]);
+
   const totalScore = Object.values(round.strokes).reduce((a, b) => a + b, 0);
   const totalPar = course.holes.reduce((a, h) => a + h.par, 0);
 
@@ -639,11 +655,14 @@ export default function PlayPage() {
                     strokeWidth={2}
                   />
                 )}
-                {/* Live GPS marker — person silhouette like a cart navi */}
-                {playablePx && (
+                {/* Live GPS marker — person silhouette like a cart navi.
+                    Sits on the tee position immediately after ホールスタート,
+                    then transitions to the GPS-derived position once
+                    bearing-calibration completes. */}
+                {playerMarkerPx && (
                   <PersonMarker
-                    x={playablePx.x}
-                    y={playablePx.y}
+                    x={playerMarkerPx.x}
+                    y={playerMarkerPx.y}
                     size={imgSize.w * 0.05}
                   />
                 )}
@@ -769,6 +788,50 @@ export default function PlayPage() {
           －
         </button>
       </div>
+
+      {/* Prominent ホールスタート button — shown until the hole has been
+          started (tee captured + tee color picked). Tapping it captures the
+          current GPS as the tee position; the silhouette will appear at the
+          tee image position immediately, then move with GPS once bearing
+          is auto-detected from walking. */}
+      {!isHoleStarted && (
+        <button
+          onClick={async () => {
+            if (!selectedTee) {
+              alert("先に「ティー選択」でティー色 (白/青/赤など) を選んでください。");
+              setShowTeePicker(true);
+              return;
+            }
+            await captureTee();
+          }}
+          style={{
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+            bottom: "calc(env(safe-area-inset-bottom) + 100px)",
+            background: "var(--accent)",
+            color: "#1a1208",
+            padding: "14px 28px",
+            borderRadius: 999,
+            fontSize: 17,
+            fontWeight: 800,
+            border: "2px solid #fff",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+            zIndex: 9,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            whiteSpace: "nowrap",
+          }}
+        >
+          ▶ ホールスタート
+          {selectedTee && (
+            <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.7 }}>
+              ({selectedTee.toUpperCase()} {teeYardage}y)
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Setup action buttons: tee GPS + green tap-on-map */}
       <div
