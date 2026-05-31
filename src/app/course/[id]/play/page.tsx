@@ -196,15 +196,16 @@ export default function PlayPage() {
     round?.tracks[currentHole]?.length,
   ]);
 
-  const calibration: Calibration | null = useMemo(() => {
-    if (!hole || !hole.tee || !hole.green || !hole.teePx || !hole.greenPx) return null;
-    return {
-      tee: hole.tee,
-      green: hole.green,
-      teePx: hole.teePx,
-      greenPx: hole.greenPx,
-    };
-  }, [hole]);
+  // Effective tee image position: explicit pin if user has set it, otherwise
+  // a sensible default at the bottom-center of the map image. Most Accordia /
+  // Japanese-course layout images show the tee box near the bottom of the
+  // image (player looking up the fairway), so this default is usually close
+  // enough for the player marker to land in the right area.
+  const effectiveTeePx = useMemo(() => {
+    if (hole?.teePx) return hole.teePx;
+    if (!imgSize) return null;
+    return { x: imgSize.w / 2, y: imgSize.h * 0.94 };
+  }, [hole?.teePx, imgSize]);
 
   const selectedTee = round?.selectedTee;
   const teeYardage = selectedTee && hole?.yardages?.[selectedTee]
@@ -213,16 +214,23 @@ export default function PlayPage() {
 
   /**
    * Derived green world coords:
-   *   from tee GPS + compass bearing (recorded at tee setup) + selected yardage.
-   *
-   * Once these three are known we can compute the green's real lat/lng and then
-   * use a normal haversine distance — which correctly handles sideways or
-   * backward movement (e.g., recovery shots from trouble).
+   *   from tee GPS + auto-detected bearing + selected yardage.
    */
   const derivedGreen = useMemo(() => {
     if (!hole?.tee || hole.bearingFromTeeDeg == null || teeYardage == null) return null;
     return projectLatLng(hole.tee, hole.bearingFromTeeDeg, yardsToMeters(teeYardage));
   }, [hole?.tee, hole?.bearingFromTeeDeg, teeYardage]);
+
+  const calibration: Calibration | null = useMemo(() => {
+    const tee = hole?.tee ?? null;
+    const greenPx = hole?.greenPx ?? null;
+    const teePx = effectiveTeePx;
+    // Prefer the green derived from bearing + yardage; fall back to a legacy
+    // explicit hole.green (LatLng) if it was captured before.
+    const green = derivedGreen ?? hole?.green ?? null;
+    if (!tee || !green || !teePx || !greenPx) return null;
+    return { tee, green, teePx, greenPx };
+  }, [hole?.tee, hole?.green, hole?.greenPx, effectiveTeePx, derivedGreen]);
 
   const yardsToGreen = useMemo(() => {
     if (!fix) return null;
@@ -631,25 +639,13 @@ export default function PlayPage() {
                     strokeWidth={2}
                   />
                 )}
-                {/* Live GPS marker */}
+                {/* Live GPS marker — person silhouette like a cart navi */}
                 {playablePx && (
-                  <g>
-                    <circle
-                      cx={playablePx.x}
-                      cy={playablePx.y}
-                      r={imgSize.w * 0.025}
-                      fill="#3a8fff"
-                      fillOpacity={0.2}
-                    />
-                    <circle
-                      cx={playablePx.x}
-                      cy={playablePx.y}
-                      r={imgSize.w * 0.012}
-                      fill="#3a8fff"
-                      stroke="#fff"
-                      strokeWidth={3}
-                    />
-                  </g>
+                  <PersonMarker
+                    x={playablePx.x}
+                    y={playablePx.y}
+                    size={imgSize.w * 0.05}
+                  />
                 )}
               </svg>
             )}
@@ -1055,6 +1051,37 @@ export default function PlayPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Live-position marker: a soft halo + a simple person silhouette
+ * (head + rounded-shoulder torso) rendered inside the map SVG.
+ *
+ *   x, y  – pixel coordinates in the image's natural coord space
+ *   size  – overall figure height (px in the same space)
+ */
+function PersonMarker({ x, y, size }: { x: number; y: number; size: number }) {
+  const s = size;
+  return (
+    <g>
+      {/* Soft outer halo for visibility */}
+      <circle cx={x} cy={y} r={s * 1.0} fill="#3a8fff" fillOpacity={0.18} />
+      <circle cx={x} cy={y} r={s * 0.55} fill="#3a8fff" fillOpacity={0.28} />
+      {/* Person — translate so figure stands centred at (x, y) */}
+      <g transform={`translate(${x} ${y})`} fill="#3a8fff" stroke="#ffffff" strokeWidth={s * 0.06} strokeLinejoin="round">
+        {/* Head */}
+        <circle cx={0} cy={-s * 0.55} r={s * 0.24} />
+        {/* Torso with rounded shoulders / tapered waist */}
+        <path
+          d={`M ${-s * 0.4} ${-s * 0.1}
+              Q ${-s * 0.5} ${s * 0.15}, ${-s * 0.4} ${s * 0.5}
+              L ${s * 0.4} ${s * 0.5}
+              Q ${s * 0.5} ${s * 0.15}, ${s * 0.4} ${-s * 0.1}
+              Q ${0} ${-s * 0.25}, ${-s * 0.4} ${-s * 0.1} Z`}
+        />
+      </g>
+    </g>
   );
 }
 
