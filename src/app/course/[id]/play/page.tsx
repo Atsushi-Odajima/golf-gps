@@ -55,19 +55,40 @@ export default function PlayPage() {
     (async () => {
       const c = await getCourse(params.id);
       if (cancelled || !c) return;
-      setCourse(c);
       let r = getActiveRound();
-      if (!r || r.courseId !== c.id) {
+      const isNewRound = !r || r.courseId !== c.id;
+      if (isNewRound) {
         r = startRound(c.id);
       }
       setRound(r);
+
+      // On a fresh round, reset every hole's *per-round* tee data so the user
+      // is required to press ホールスタート and re-tap each tee on the map.
+      // (Course-level data like image, par, yardages, greenPx remain.)
+      let displayCourse: Course = c;
+      if (isNewRound) {
+        displayCourse = {
+          ...c,
+          holes: c.holes.map((h) => ({
+            ...h,
+            tee: null,
+            teePx: null,
+            bearingFromTeeDeg: undefined,
+          })),
+        };
+        saveCourse(displayCourse).catch(() => {
+          // non-critical; UI will still show reset state
+        });
+      }
+      setCourse(displayCourse);
+
       // Priority: explicit ?startHole query → first calibrated hole → 1
       const startHoleParam = searchParams?.get("startHole");
       const parsed = startHoleParam ? parseInt(startHoleParam, 10) : NaN;
       if (!isNaN(parsed) && parsed >= 1 && parsed <= 36) {
         setCurrentHole(parsed);
       } else {
-        const firstReady = c.holes.find((h) => h.tee && h.green);
+        const firstReady = displayCourse.holes.find((h) => h.tee && h.green);
         setCurrentHole(firstReady?.number ?? 1);
       }
     })();
@@ -1042,52 +1063,54 @@ export default function PlayPage() {
         </div>
       )}
 
-      {/* Tap-mode banner */}
+      {/* Tap-mode banner — top, between brand badge and map image.
+          Click-through (pointer-events:none) so taps still hit the map; only
+          the explicit ✕ button stays clickable. */}
       {tapMode && (
         <div
           style={{
-            // Bottom-centered, content width so it doesn't cover the map's upper
-            // portion where the green is drawn. Sits above the GPS indicator and
-            // between the left (Score+End) and right (Tee/Green) action stacks.
             position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
-            bottom: "calc(env(safe-area-inset-bottom) + 50px)",
+            top: "calc(env(safe-area-inset-top) + 96px)",
+            left: 12,
+            right: 12,
             background: "rgba(246,198,74,0.95)",
             color: "#1a1208",
-            padding: "8px 14px",
-            borderRadius: 999,
+            padding: "10px 14px",
+            borderRadius: 10,
             zIndex: 16,
             fontWeight: 700,
-            fontSize: 13,
+            fontSize: 14,
             boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
-            display: "inline-flex",
+            display: "flex",
             alignItems: "center",
-            gap: 10,
+            justifyContent: "center",
+            gap: 12,
             whiteSpace: "nowrap",
-            maxWidth: "calc(100vw - 220px)",
+            pointerEvents: "none",
           }}
         >
           <span>
             {tapMode === "tee"
               ? `📌 ${selectedTee ? selectedTee.toUpperCase() + "の" : ""}ティー位置をタップ`
-              : "📌 グリーンをタップ"}
+              : "📌 グリーン位置をタップ"}
           </span>
           <button
             onClick={() => setTapMode(null)}
             style={{
-              width: 26,
-              height: 26,
-              borderRadius: 13,
+              pointerEvents: "auto",
+              width: 28,
+              height: 28,
+              borderRadius: 14,
               padding: 0,
               background: "rgba(0,0,0,0.25)",
               border: "1px solid rgba(0,0,0,0.45)",
-              fontSize: 14,
+              fontSize: 16,
               lineHeight: 1,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "#1a1208",
+              flexShrink: 0,
             }}
           >
             ×
