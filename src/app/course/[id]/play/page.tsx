@@ -381,6 +381,69 @@ export default function PlayPage() {
     }
   };
 
+  /**
+   * Single "Hole Start" controller. Each press progresses through the setup
+   * wizard:
+   *   1) tee colour not selected     → open tee picker
+   *   2) selected but teePx not set  → enter map-tap mode for tee
+   *   3) all set                     → capture GPS and start tracking
+   * No confirmation dialogs. The hole is fully reset for fresh setup at the
+   * start of every new round (init effect above), so this just walks forward.
+   */
+  const handleHoleStart = async () => {
+    if (!selectedTee) {
+      setShowTeePicker(true);
+      return;
+    }
+    if (!hole?.teePx) {
+      setTapMode("tee");
+      return;
+    }
+    if (!fix) {
+      alert("GPSがまだ取得できていません。少し待ってからお試しください。");
+      return;
+    }
+    if (!course || !hole) return;
+    const updatedHole: Hole = {
+      ...hole,
+      tee: { lat: fix.lat, lng: fix.lng },
+      bearingFromTeeDeg: undefined,
+    };
+    const updatedCourse: Course = {
+      ...course,
+      holes: course.holes.map((h) => (h.number === hole.number ? updatedHole : h)),
+    };
+    setCourse(updatedCourse);
+    try {
+      await saveCourse(updatedCourse);
+    } catch (e) {
+      alert("保存に失敗しました: " + String(e));
+    }
+  };
+
+  /** Manual full-reset for this hole, restoring the start-wizard. */
+  const resetHole = async () => {
+    if (!course || !hole) return;
+    if (!confirm("このホールのティー設定をリセットしてやり直しますか？")) return;
+    const updatedHole: Hole = {
+      ...hole,
+      tee: null,
+      teePx: null,
+      bearingFromTeeDeg: undefined,
+    };
+    const updatedCourse: Course = {
+      ...course,
+      holes: course.holes.map((h) => (h.number === hole.number ? updatedHole : h)),
+    };
+    setCourse(updatedCourse);
+    setTapMode(null);
+    try {
+      await saveCourse(updatedCourse);
+    } catch (e) {
+      alert("保存に失敗しました: " + String(e));
+    }
+  };
+
   const captureTee = async () => {
     if (!fix) {
       alert("GPSがまだ取得できていません。少し待ってからお試しください。");
@@ -434,7 +497,10 @@ export default function PlayPage() {
 
   // The hole is "started" once we have a tee GPS *and* a tee color (yardage)
   // selected. Both are needed before distance/positioning makes sense.
-  const isHoleStarted = !!hole?.tee && !!selectedTee;
+  // Hole is "started" once all three are present: tee color picked, image
+  // tee position tapped, and live GPS tee captured. Until then, the wizard
+  // ホールスタート pill button stays visible to guide the next step.
+  const isHoleStarted = !!hole?.tee && !!selectedTee && !!hole?.teePx;
 
   // Pixel position to render the player silhouette at.
   // - Preferred: the GPS-derived position once calibration is complete.
@@ -814,21 +880,11 @@ export default function PlayPage() {
         </button>
       </div>
 
-      {/* Prominent ホールスタート button — shown until the hole has been
-          started (tee captured + tee color picked). Tapping it captures the
-          current GPS as the tee position; the silhouette will appear at the
-          tee image position immediately, then move with GPS once bearing
-          is auto-detected from walking. */}
+      {/* Setup wizard button — progresses through the 3 setup steps each tap.
+          Hidden once all three (tee colour, teePx, hole.tee) are present. */}
       {!isHoleStarted && (
         <button
-          onClick={async () => {
-            if (!selectedTee) {
-              alert("先に「ティー選択」でティー色 (白/青/赤など) を選んでください。");
-              setShowTeePicker(true);
-              return;
-            }
-            await captureTee();
-          }}
+          onClick={handleHoleStart}
           style={{
             position: "absolute",
             left: "50%",
@@ -836,9 +892,9 @@ export default function PlayPage() {
             bottom: "calc(env(safe-area-inset-bottom) + 100px)",
             background: "var(--accent)",
             color: "#1a1208",
-            padding: "14px 28px",
+            padding: "14px 24px",
             borderRadius: 999,
-            fontSize: 17,
+            fontSize: 16,
             fontWeight: 800,
             border: "2px solid #fff",
             boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
@@ -847,14 +903,14 @@ export default function PlayPage() {
             alignItems: "center",
             gap: 8,
             whiteSpace: "nowrap",
+            maxWidth: "calc(100vw - 32px)",
           }}
         >
-          ▶ ホールスタート
-          {selectedTee && (
-            <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.7 }}>
-              ({selectedTee.toUpperCase()} {teeYardage}y)
-            </span>
-          )}
+          {!selectedTee
+            ? "① ティー色を選択 →"
+            : !hole?.teePx
+              ? `② マップで${selectedTee.toUpperCase()}ティーをタップ →`
+              : `▶ ホールスタート! (${selectedTee.toUpperCase()} ${teeYardage}y)`}
         </button>
       )}
 
@@ -870,42 +926,41 @@ export default function PlayPage() {
           zIndex: 8,
         }}
       >
-        <button
-          onClick={captureTee}
-          title="現在地をティーに登録 (歩行で方位を自動補正)"
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            background:
-              hole?.tee && hole?.bearingFromTeeDeg != null
-                ? "rgba(58,165,92,0.85)"
-                : hole?.tee
-                  ? "rgba(232,155,42,0.85)"
-                  : "rgba(10,20,16,0.85)",
-            border: `2px solid ${
-              hole?.tee && hole?.bearingFromTeeDeg != null
-                ? "#3aa55c"
-                : hole?.tee
-                  ? "var(--accent-2)"
-                  : "var(--accent)"
-            }`,
-            color: "#fff",
-            fontSize: 11,
-            fontWeight: 800,
-            lineHeight: 1.1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-          }}
-        >
-          <span style={{ fontSize: 18 }}>
-            {hole?.tee && hole?.bearingFromTeeDeg != null ? "✓" : hole?.tee ? "⏳" : "📍"}
-          </span>
-          <span>ティー</span>
-        </button>
+        {/* Round Tee button — only shown after the wizard has completed.
+            Press to fully reset and re-do the wizard for this hole (e.g., when
+            switching tee colour mid-round). */}
+        {isHoleStarted && (
+          <button
+            onClick={resetHole}
+            title="ティー設定をリセットしてやり直す"
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 32,
+              background:
+                hole?.bearingFromTeeDeg != null
+                  ? "rgba(58,165,92,0.85)"
+                  : "rgba(232,155,42,0.85)",
+              border: `2px solid ${
+                hole?.bearingFromTeeDeg != null ? "#3aa55c" : "var(--accent-2)"
+              }`,
+              color: "#fff",
+              fontSize: 11,
+              fontWeight: 800,
+              lineHeight: 1.1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+            }}
+          >
+            <span style={{ fontSize: 18 }}>
+              {hole?.bearingFromTeeDeg != null ? "✓" : "⏳"}
+            </span>
+            <span>ティー</span>
+          </button>
+        )}
         <button
           onClick={() => setTapMode(tapMode === "green" ? null : "green")}
           title="マップ上でグリーン手前位置をタップして登録"
