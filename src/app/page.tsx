@@ -184,9 +184,6 @@ export default function HomePage() {
     <>
       <div className="appbar">
         <div style={{ flex: 1 }} />
-        <button className="btn" onClick={handleImportUrl} title="URLからインポート">
-          🔗URL
-        </button>
         <button className="btn primary" onClick={handleAdd}>
           ＋
         </button>
@@ -316,13 +313,36 @@ export default function HomePage() {
           )}
         </div>
 
+        <button
+          onClick={handleImportUrl}
+          style={{
+            display: "flex",
+            width: "100%",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            marginTop: 16,
+            padding: "14px 18px",
+            background: "var(--accent)",
+            color: "#1a1208",
+            border: "none",
+            borderRadius: 12,
+            fontSize: 15,
+            fontWeight: 800,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+          }}
+        >
+          🔗 コースマップURL登録
+        </button>
+
         <h1 style={{ fontSize: 20, margin: "20px 4px 10px", fontWeight: 700 }}>
           コース一覧
         </h1>
 
         {courses.length === 0 && (
           <div className="card muted">
-            まだコースがありません。右上の「＋コース」から作成してください。
+            まだコースがありません。右上の「＋」から作成、
+            または上の「コースマップURL登録」からインポートしてください。
           </div>
         )}
 
