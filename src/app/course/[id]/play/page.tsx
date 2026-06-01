@@ -1118,30 +1118,29 @@ export default function PlayPage() {
         </div>
       )}
 
-      {/* Tap-mode banner — top, between brand badge and map image.
-          Click-through (pointer-events:none) so taps still hit the map; only
-          the explicit ✕ button stays clickable. */}
+      {/* Tap-mode banner — positioned in the empty black area between the
+          brand badge and the back/hole-picker buttons (escapes body padding
+          via position: fixed). No click-through: this sits OFF the map. */}
       {tapMode && (
         <div
           style={{
-            position: "absolute",
-            top: "calc(env(safe-area-inset-top) + 96px)",
+            position: "fixed",
+            top: "calc(env(safe-area-inset-top) + 38px)",
             left: 12,
             right: 12,
             background: "rgba(246,198,74,0.95)",
             color: "#1a1208",
-            padding: "10px 14px",
+            padding: "8px 14px",
             borderRadius: 10,
             zIndex: 16,
             fontWeight: 700,
-            fontSize: 14,
+            fontSize: 13,
             boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: 12,
+            gap: 10,
             whiteSpace: "nowrap",
-            pointerEvents: "none",
           }}
         >
           <span>
@@ -1152,14 +1151,13 @@ export default function PlayPage() {
           <button
             onClick={() => setTapMode(null)}
             style={{
-              pointerEvents: "auto",
-              width: 28,
-              height: 28,
-              borderRadius: 14,
+              width: 26,
+              height: 26,
+              borderRadius: 13,
               padding: 0,
               background: "rgba(0,0,0,0.25)",
               border: "1px solid rgba(0,0,0,0.45)",
-              fontSize: 16,
+              fontSize: 14,
               lineHeight: 1,
               display: "flex",
               alignItems: "center",
