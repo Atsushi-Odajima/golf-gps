@@ -43,7 +43,7 @@ export default function PlayPage() {
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
   const [showHolePicker, setShowHolePicker] = useState(false);
   const [showTeePicker, setShowTeePicker] = useState(false);
-  const [tapMode, setTapMode] = useState<"green" | null>(null);
+  const [tapMode, setTapMode] = useState<"green" | "tee" | null>(null);
   const lastSaveAtRef = useRef<number>(0);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
@@ -196,15 +196,14 @@ export default function PlayPage() {
     round?.tracks[currentHole]?.length,
   ]);
 
-  // Effective tee image position: explicit pin if user has set it, otherwise
-  // a sensible default at the bottom-center of the map image. Most Accordia /
-  // Japanese-course layout images show the tee box near the bottom of the
-  // image (player looking up the fairway), so this default is usually close
-  // enough for the player marker to land in the right area.
+  // Effective tee image position: explicit pin if user has tapped it on the
+  // map, otherwise a sensible default near the bottom of the image (Accordia /
+  // 国内コースのマップは下端のティーボックスに各ティーカラーのドットが描かれ
+  // ているのが標準構図)。
   const effectiveTeePx = useMemo(() => {
     if (hole?.teePx) return hole.teePx;
     if (!imgSize) return null;
-    return { x: imgSize.w / 2, y: imgSize.h * 0.94 };
+    return { x: imgSize.w / 2, y: imgSize.h * 0.9 };
   }, [hole?.teePx, imgSize]);
 
   const selectedTee = round?.selectedTee;
@@ -331,7 +330,7 @@ export default function PlayPage() {
   };
 
   const handleMapTap = async (e: React.MouseEvent | React.TouchEvent) => {
-    if (tapMode !== "green") return;
+    if (!tapMode) return;
     let cx: number, cy: number;
     if ("changedTouches" in e) {
       const t = e.changedTouches[0];
@@ -344,7 +343,10 @@ export default function PlayPage() {
     const px = tapToImagePx(cx, cy);
     if (!px) return;
     if (!course || !hole) return;
-    const updatedHole: Hole = { ...hole, greenPx: px };
+    const updatedHole: Hole =
+      tapMode === "tee"
+        ? { ...hole, teePx: px }
+        : { ...hole, greenPx: px };
     const updatedCourse: Course = {
       ...course,
       holes: course.holes.map((h) => (h.number === hole.number ? updatedHole : h)),
@@ -368,11 +370,13 @@ export default function PlayPage() {
       return;
     }
     // Re-capturing the tee invalidates the previously auto-detected bearing
-    // (player may be on a different tee box this round).
+    // AND the previous image-tap of the tee (player may be on a different
+    // tee box this round).
     const updatedHole: Hole = {
       ...hole,
       tee: { lat: fix.lat, lng: fix.lng },
       bearingFromTeeDeg: undefined,
+      teePx: null,
     };
     const updatedCourse: Course = {
       ...course,
@@ -384,6 +388,10 @@ export default function PlayPage() {
     } catch (e) {
       alert("保存に失敗しました: " + String(e));
     }
+    // Immediately drop into tap-mode so the player can pinpoint their tee
+    // colour's dot on the map image. Until they tap, the silhouette falls
+    // back to the approximate default near the bottom-centre.
+    setTapMode("tee");
   };
 
   const goToHole = (n: number) => {
@@ -1035,7 +1043,7 @@ export default function PlayPage() {
       )}
 
       {/* Tap-mode banner */}
-      {tapMode === "green" && (
+      {tapMode && (
         <div
           style={{
             // Bottom-centered, content width so it doesn't cover the map's upper
@@ -1060,7 +1068,11 @@ export default function PlayPage() {
             maxWidth: "calc(100vw - 220px)",
           }}
         >
-          <span>📌 グリーンをタップ</span>
+          <span>
+            {tapMode === "tee"
+              ? `📌 ${selectedTee ? selectedTee.toUpperCase() + "の" : ""}ティー位置をタップ`
+              : "📌 グリーンをタップ"}
+          </span>
           <button
             onClick={() => setTapMode(null)}
             style={{
